@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 import '../providers/course_provider.dart';
 import '../providers/enrollment_provider.dart';
 import '../theme/app_colors.dart';
+import '../widgets/app_drawer.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/enrolled_course_card.dart';
+import '../widgets/menu_button.dart';
 import '../widgets/shimmer.dart';
 import 'course_detail_screen.dart';
 
@@ -42,6 +44,7 @@ class _MyLearningScreenState extends State<MyLearningScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.surface,
+      drawer: const AppDrawer(),
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
@@ -74,18 +77,31 @@ class _MyLearningScreenState extends State<MyLearningScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'My Learning',
-            style: GoogleFonts.dmSans(
-              fontSize: 26,
-              fontWeight: FontWeight.w800,
-              color: AppColors.ink,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            'Your learning journey continues here',
-            style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.muted),
+          Row(
+            children: [
+              const ZLMenuButton(),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'My Learning',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Your learning journey continues here',
+                      style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.muted),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           if (provider.state == LoadState.loaded &&
               provider.enrollments.isNotEmpty) ...[

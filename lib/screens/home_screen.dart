@@ -7,9 +7,11 @@ import '../providers/course_provider.dart';
 import '../providers/enrollment_provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/category_style.dart';
+import '../widgets/app_drawer.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/course_card.dart';
 import '../widgets/course_thumbnail.dart';
+import '../widgets/menu_button.dart';
 import 'course_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -68,6 +70,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
+      drawer: const AppDrawer(),
       body: SafeArea(
         bottom: false,
         child: FadeTransition(
@@ -116,6 +119,8 @@ class _HomeScreenState extends State<HomeScreen>
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 10),
       child: Row(
         children: [
+          const ZLMenuButton(),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

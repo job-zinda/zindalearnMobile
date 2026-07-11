@@ -40,10 +40,18 @@ class AuthService {
   /// POST /api/auth/google-login
   Future<ApiResponse<Map<String, dynamic>>> googleLogin({
     required String token,
+    required String email,
+    String? name,
+    String? photo,
   }) async {
     final response = await _client.post(
       ApiConstants.googleLogin,
-      data: {'token': token},
+      data: {
+        'token': token,
+        'email': email,
+        'name': name,
+        'photo': photo,
+      },
     );
     return _authResponse(response.data);
   }

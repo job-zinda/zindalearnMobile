@@ -5,9 +5,12 @@ import '../models/enrollment_model.dart';
 import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/enrollment_provider.dart';
+import '../providers/message_provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/category_style.dart';
+import '../widgets/app_drawer.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../widgets/menu_button.dart';
 import 'course_detail_screen.dart';
 import 'edit_profile_screen.dart';
 
@@ -84,6 +87,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     return Scaffold(
       backgroundColor: AppColors.surface,
+      drawer: const AppDrawer(),
       body: Column(
         children: [
           // Purple gradient header
@@ -105,7 +109,16 @@ class _ProfileScreenState extends State<ProfileScreen>
                   bottom: false,
                   child: Column(
                     children: [
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: const [
+                          ZLMenuButton(
+                            iconColor: Colors.white,
+                            borderColor: Color(0x66FFFFFF),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
                       // Avatar
                       Container(
                         width: 68,
@@ -296,7 +309,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
 
           ZLBottomNav(
-            currentIndex: 3,
+            currentIndex: 4,
             onTap: (i) => widget.onNavTap?.call(i),
           ),
         ],
@@ -522,6 +535,7 @@ class _SignOutRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () async {
+        context.read<MessageProvider>().disconnectAndReset();
         await context.read<AuthProvider>().logout();
         if (!context.mounted) return;
         Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);

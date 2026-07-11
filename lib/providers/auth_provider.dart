@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import '../core/constants/api_constants.dart';
 import '../core/network/api_exceptions.dart';
 import '../core/storage/secure_storage.dart';
 import '../models/user_model.dart';
@@ -107,7 +109,9 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> _ensureGoogleInitialized() async {
     if (!_googleInitialized) {
-      await _googleSignIn.initialize();
+      await _googleSignIn.initialize(
+        serverClientId: ApiConstants.googleServerClientId,
+      );
       _googleInitialized = true;
     }
   }
@@ -120,16 +124,35 @@ class AuthProvider extends ChangeNotifier {
 
       await _ensureGoogleInitialized();
       final account = await _googleSignIn.authenticate();
-      final idToken = account.authentication.idToken;
-      if (idToken == null) {
+      final googleIdToken = account.authentication.idToken;
+      if (googleIdToken == null) {
         _errorMessage = 'Failed to get Google credentials.';
         _status = AuthStatus.error;
         notifyListeners();
         return false;
       }
 
+      // Exchange the Google credential for a Firebase ID token — the
+      // backend verifies via Firebase Admin's verifyIdToken(), which only
+      // accepts Firebase-issued tokens, not the raw Google OAuth idToken.
+      final credential = GoogleAuthProvider.credential(idToken: googleIdToken);
+      final userCredential =
+          await FirebaseAuth.instance.signInWithCredential(credential);
+      final firebaseIdToken = await userCredential.user?.getIdToken();
+      if (firebaseIdToken == null) {
+        _errorMessage = 'Failed to get Firebase credentials.';
+        _status = AuthStatus.error;
+        notifyListeners();
+        return false;
+      }
+
       return _handleAuth(() async {
-        final response = await _authService.googleLogin(token: idToken);
+        final response = await _authService.googleLogin(
+          token: firebaseIdToken,
+          email: account.email,
+          name: account.displayName,
+          photo: account.photoUrl,
+        );
         return response;
       });
     } on GoogleSignInException catch (e) {
@@ -262,6 +285,11 @@ class AuthProvider extends ChangeNotifier {
       await _googleSignIn.disconnect();
     } catch (_) {
       // Ignore Google sign-out errors
+    }
+    try {
+      await FirebaseAuth.instance.signOut();
+    } catch (_) {
+      // Ignore Firebase sign-out errors
     }
     await _logout();
     notifyListeners();

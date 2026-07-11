@@ -5,8 +5,10 @@ import 'package:provider/provider.dart';
 import '../providers/course_provider.dart';
 import '../providers/enrollment_provider.dart';
 import '../theme/app_colors.dart';
+import '../widgets/app_drawer.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/course_card.dart';
+import '../widgets/menu_button.dart';
 import '../widgets/shimmer.dart';
 import 'course_detail_screen.dart';
 
@@ -88,6 +90,7 @@ class _BrowseCoursesScreenState extends State<BrowseCoursesScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.surface,
+      drawer: const AppDrawer(),
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
@@ -119,21 +122,32 @@ class _BrowseCoursesScreenState extends State<BrowseCoursesScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(18, 14, 18, 2),
-          child: Text(
-            'Browse Courses',
-            style: GoogleFonts.dmSans(
-              fontSize: 26,
-              fontWeight: FontWeight.w800,
-              color: AppColors.ink,
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(18, 0, 18, 14),
-          child: Text(
-            'Discover new skills from expert-led courses.',
-            style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.muted),
+          padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+          child: Row(
+            children: [
+              const ZLMenuButton(),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Browse Courses',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Discover new skills from expert-led courses.',
+                      style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.muted),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
 

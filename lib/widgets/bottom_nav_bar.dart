@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../providers/message_provider.dart';
 import '../theme/app_colors.dart';
 
 class ZLBottomNav extends StatelessWidget {
@@ -12,12 +14,16 @@ class ZLBottomNav extends StatelessWidget {
     required this.onTap,
   });
 
+  static const int messagesIndex = 3;
+
   @override
   Widget build(BuildContext context) {
+    final unread = context.select<MessageProvider, int>((p) => p.unreadCount);
     final items = [
       _NavItem(emoji: '🏠', label: 'Home'),
       _NavItem(emoji: '🔍', label: 'Browse'),
       _NavItem(emoji: '📚', label: 'Learning'),
+      _NavItem(emoji: '💬', label: 'Messages'),
       _NavItem(emoji: '👤', label: 'Profile'),
     ];
 
@@ -31,6 +37,7 @@ class ZLBottomNav extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: List.generate(items.length, (i) {
           final active = currentIndex == i;
+          final showBadge = i == messagesIndex && unread > 0;
           return GestureDetector(
             onTap: () => onTap(i),
             behavior: HitTestBehavior.opaque,
@@ -40,8 +47,26 @@ class ZLBottomNav extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(items[i].emoji,
-                      style: const TextStyle(fontSize: 20)),
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Text(items[i].emoji,
+                          style: const TextStyle(fontSize: 20)),
+                      if (showBadge)
+                        Positioned(
+                          right: -4,
+                          top: -2,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: AppColors.red,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                   const SizedBox(height: 3),
                   Text(
                     items[i].label,
