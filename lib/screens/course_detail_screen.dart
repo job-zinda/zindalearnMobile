@@ -7,6 +7,7 @@ import '../models/course_model.dart';
 import '../providers/enrollment_provider.dart';
 import '../services/course_service.dart';
 import '../theme/app_colors.dart';
+import 'payment_coming_soon_screen.dart';
 import '../theme/category_style.dart';
 import '../widgets/course_thumbnail.dart';
 
@@ -553,7 +554,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   ? null
                   : () => enrolled
                       ? _openLearning(course)
-                      : _confirmEnroll(course),
+                      : course.isFree
+                          ? _confirmEnroll(course)
+                          : _showPaymentComingSoon(course),
             ),
           ),
         ],
@@ -566,6 +569,14 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       const SnackBar(
         content: Text('The lesson player is coming soon.'),
         behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _showPaymentComingSoon(CourseModel course) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PaymentComingSoonScreen(course: course),
       ),
     );
   }
