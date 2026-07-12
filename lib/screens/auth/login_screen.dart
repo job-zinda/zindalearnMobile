@@ -284,40 +284,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
-
-                // OTP login
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: OutlinedButton.icon(
-                    onPressed: auth.isLoading
-                        ? null
-                        : () {
-                            Navigator.of(context).push(MaterialPageRoute(
-                              builder: (_) =>
-                                  const OtpScreen(flow: OtpFlow.login),
-                            ));
-                          },
-                    icon: const Icon(Icons.mail_outline,
-                        size: 20, color: AppColors.brand),
-                    label: Text(
-                      'Sign in with OTP',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.ink,
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(
-                          color: AppColors.border, width: 1.5),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                  ),
-                ),
                 const SizedBox(height: 28),
 
                 // Register link

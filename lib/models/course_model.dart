@@ -113,6 +113,12 @@ class CourseModel {
   final int totalDuration; // minutes
   final bool enrolled;
 
+  // Instructor workflow fields (present when the course comes from an
+  // instructor-scoped endpoint; default to a brand-new draft otherwise).
+  final String status; // draft | pending | published | declined
+  final String? declineReason;
+  final DateTime? submittedAt;
+
   CourseModel({
     required this.id,
     required this.title,
@@ -137,6 +143,9 @@ class CourseModel {
     this.totalLessons = 0,
     this.totalDuration = 0,
     this.enrolled = false,
+    this.status = 'draft',
+    this.declineReason,
+    this.submittedAt,
   });
 
   factory CourseModel.fromJson(Map<String, dynamic> json) {
@@ -182,6 +191,9 @@ class CourseModel {
       totalLessons: lessonCount,
       totalDuration: durationTotal,
       enrolled: json['enrolled'] == true,
+      status: (json['status'] ?? 'draft').toString(),
+      declineReason: json['declineReason']?.toString(),
+      submittedAt: DateTime.tryParse(json['submittedAt']?.toString() ?? ''),
     );
   }
 

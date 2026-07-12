@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import '../providers/message_provider.dart';
 import '../screens/certificates_screen.dart';
 import '../screens/help_support_screen.dart';
+import '../screens/instructor_studio_screen.dart';
 import '../screens/live_classes_screen.dart';
 import '../screens/progress_screen.dart';
 import '../screens/settings_screen.dart';
@@ -41,6 +42,7 @@ class AppDrawer extends StatelessWidget {
     final displayName = user?.name ?? 'Guest';
     final initials = displayName.trim().isNotEmpty ? displayName.trim()[0].toUpperCase() : '?';
     final avatar = user?.avatar;
+    final isInstructor = user?.role == 'instructor';
 
     return Drawer(
       backgroundColor: AppColors.surface,
@@ -109,6 +111,14 @@ class AppDrawer extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 children: [
+                  if (isInstructor) ...[
+                    _DrawerItem(
+                      emoji: '🎓',
+                      label: 'Instructor Studio',
+                      onTap: () => _openScreen(context, const InstructorStudioScreen()),
+                    ),
+                    const Divider(height: 1, color: AppColors.border, indent: 14, endIndent: 14),
+                  ],
                   _DrawerItem(
                     emoji: '📹',
                     label: 'Live Classes',

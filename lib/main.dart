@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/course_provider.dart';
 import 'providers/enrollment_provider.dart';
+import 'providers/instructor_provider.dart';
 import 'providers/message_provider.dart';
 import 'screens/splash_screen.dart';
 import 'screens/main_screen.dart';
@@ -30,6 +31,7 @@ class ZindaLearnApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CourseProvider()),
         ChangeNotifierProvider(create: (_) => EnrollmentProvider()),
         ChangeNotifierProvider(create: (_) => MessageProvider()),
+        ChangeNotifierProvider(create: (_) => InstructorProvider()),
       ],
       child: MaterialApp(
         title: 'ZindaLearn',

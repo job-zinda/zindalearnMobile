@@ -24,6 +24,20 @@ class ApiConstants {
   // Course endpoints
   static const String courses = '/api/courses';
   static String course(String id) => '/api/courses/$id';
+  static String submitCourse(String id) => '/api/courses/$id/submit';
+  static String courseSections(String id) => '/api/courses/$id/sections';
+  static String courseSection(String id, String sectionId) =>
+      '/api/courses/$id/sections/$sectionId';
+  static String courseLessons(String id, String sectionId) =>
+      '/api/courses/$id/sections/$sectionId/lessons';
+  static String courseLesson(String id, String sectionId, String lessonId) =>
+      '/api/courses/$id/sections/$sectionId/lessons/$lessonId';
+
+  // Instructor endpoints
+  static const String instructorStats = '/api/instructor/stats';
+  static const String instructorMyCourses = '/api/instructor/my-courses';
+  static const String instructorCourse = '/api/instructor/course';
+  static String instructorCourseId(String id) => '/api/instructor/course/$id';
 
   // Enrollment endpoints
   static const String enrollments = '/api/enrollments';
