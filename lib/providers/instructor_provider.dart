@@ -125,6 +125,8 @@ class InstructorProvider extends ChangeNotifier {
     num discountPrice = 0,
     bool isFree = false,
     String thumbnail = '',
+    String previewVideo = '',
+    String previewVideoPublicId = '',
   }) async {
     final course = await _service.createCourse(
       title: title,
@@ -136,6 +138,8 @@ class InstructorProvider extends ChangeNotifier {
       discountPrice: discountPrice,
       isFree: isFree,
       thumbnail: thumbnail,
+      previewVideo: previewVideo,
+      previewVideoPublicId: previewVideoPublicId,
     );
     _myCourses.insert(0, course);
     _total += 1;

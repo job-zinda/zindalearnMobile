@@ -44,6 +44,9 @@ class _CreateEditCourseScreenState extends State<CreateEditCourseScreen> {
   late bool _isFree;
   String? _thumbnailUrl;
   bool _uploadingThumbnail = false;
+  String? _previewVideoUrl;
+  String? _previewVideoPublicId;
+  bool _uploadingVideo = false;
   bool _saving = false;
 
   bool get _isEdit => widget.course != null;
@@ -62,6 +65,7 @@ class _CreateEditCourseScreenState extends State<CreateEditCourseScreen> {
     _level = _levels.contains(c?.level) ? c!.level : 'Beginner';
     _isFree = c != null ? c.price <= 0 : false;
     _thumbnailUrl = c?.thumbnail;
+    _previewVideoUrl = c?.previewVideo;
   }
 
   @override
@@ -134,6 +138,75 @@ class _CreateEditCourseScreenState extends State<CreateEditCourseScreen> {
     }
   }
 
+  Future<void> _pickVideo() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.videocam_outlined, color: AppColors.brand),
+              title: Text('Record Video',
+                  style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.ink)),
+              onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.video_library_outlined, color: AppColors.brand),
+              title: Text('Choose from Gallery',
+                  style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.ink)),
+              onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+
+    final picked = await ImagePicker()
+        .pickVideo(source: source, maxDuration: const Duration(minutes: 10));
+    if (picked == null || !mounted) return;
+
+    final file = File(picked.path);
+    const maxBytes = 100 * 1024 * 1024;
+    if (await file.length() > maxBytes) {
+      if (!mounted) return;
+      _showSnack('Video must be 100MB or smaller.', error: true);
+      return;
+    }
+
+    setState(() => _uploadingVideo = true);
+    try {
+      final result =
+          await UploadService().uploadVideo(file, courseId: widget.course?.id);
+      if (!mounted) return;
+      setState(() {
+        _previewVideoUrl = result.url;
+        _previewVideoPublicId = result.publicId;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      _showSnack(e.message, error: true);
+    } finally {
+      if (mounted) setState(() => _uploadingVideo = false);
+    }
+  }
+
   void _showSnack(String message, {bool error = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -165,6 +238,8 @@ class _CreateEditCourseScreenState extends State<CreateEditCourseScreen> {
           discountPrice: discount,
           isFree: _isFree,
           thumbnail: _thumbnailUrl,
+          previewVideo: _previewVideoUrl,
+          previewVideoPublicId: _previewVideoPublicId,
         );
         if (!mounted) return;
         context.read<InstructorProvider>().replaceCourse(updated);
@@ -181,6 +256,8 @@ class _CreateEditCourseScreenState extends State<CreateEditCourseScreen> {
               discountPrice: discount,
               isFree: _isFree,
               thumbnail: _thumbnailUrl ?? '',
+              previewVideo: _previewVideoUrl ?? '',
+              previewVideoPublicId: _previewVideoPublicId ?? '',
             );
         if (!mounted) return;
         _showSnack('Course created successfully!');
@@ -300,6 +377,14 @@ class _CreateEditCourseScreenState extends State<CreateEditCourseScreen> {
                             url: _thumbnailUrl,
                             uploading: _uploadingThumbnail,
                             onTap: _pickThumbnail,
+                          ),
+                          const SizedBox(height: 16),
+                          _Label('Promo Video'),
+                          const SizedBox(height: 6),
+                          _VideoPicker(
+                            hasVideo: _previewVideoUrl != null && _previewVideoUrl!.isNotEmpty,
+                            uploading: _uploadingVideo,
+                            onTap: _pickVideo,
                           ),
                         ],
                       ),
@@ -634,6 +719,94 @@ class _ThumbnailPicker extends StatelessWidget {
                       ),
                       Text(
                         'JPG, PNG or WEBP',
+                        style: GoogleFonts.dmSans(fontSize: 11, color: AppColors.faint),
+                      ),
+                    ],
+                  ),
+      ),
+    );
+  }
+}
+
+class _VideoPicker extends StatelessWidget {
+  final bool hasVideo;
+  final bool uploading;
+  final VoidCallback onTap;
+  const _VideoPicker({
+    required this.hasVideo,
+    required this.uploading,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: uploading ? null : onTap,
+      child: Container(
+        height: 140,
+        width: double.infinity,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: AppColors.bg,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border, width: 1.5),
+        ),
+        child: uploading
+            ? const Center(
+                child: CircularProgressIndicator(color: AppColors.brand))
+            : hasVideo
+                ? Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      const ColoredBox(color: AppColors.brandDark),
+                      const Center(
+                        child: Icon(Icons.play_circle_fill_rounded,
+                            size: 40, color: Colors.white70),
+                      ),
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          color: Colors.black45,
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Video uploaded',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: const BoxDecoration(
+                            color: Colors.black54,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.edit_rounded,
+                              size: 14, color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.videocam_outlined, size: 28, color: AppColors.faint),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Tap to add a promo video',
+                        style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.muted),
+                      ),
+                      Text(
+                        'MP4 or MOV, max 100MB',
                         style: GoogleFonts.dmSans(fontSize: 11, color: AppColors.faint),
                       ),
                     ],

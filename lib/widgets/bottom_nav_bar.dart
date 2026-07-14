@@ -41,13 +41,16 @@ class ZLBottomNav extends StatelessWidget {
           return GestureDetector(
             onTap: () => onTap(i),
             behavior: HitTestBehavior.opaque,
-            child: AnimatedOpacity(
-              duration: const Duration(milliseconds: 200),
-              opacity: active ? 1.0 : 0.35,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Stack(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedOpacity(
+                  duration: const Duration(milliseconds: 200),
+                  // Emoji glyphs render in their own fixed colors, so opacity
+                  // is the only way to dim them for the inactive state — kept
+                  // high enough (0.6) to stay legible against a white bar.
+                  opacity: active ? 1.0 : 0.6,
+                  child: Stack(
                     clipBehavior: Clip.none,
                     children: [
                       Text(items[i].emoji,
@@ -67,18 +70,18 @@ class ZLBottomNav extends StatelessWidget {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    items[i].label,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 11,
-                      fontWeight:
-                          active ? FontWeight.w700 : FontWeight.w400,
-                      color: active ? AppColors.brand : AppColors.faint,
-                    ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  items[i].label,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 11,
+                    fontWeight:
+                        active ? FontWeight.w700 : FontWeight.w400,
+                    color: active ? AppColors.brand : AppColors.muted,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           );
         }),

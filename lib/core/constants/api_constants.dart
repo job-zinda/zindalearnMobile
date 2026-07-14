@@ -20,6 +20,7 @@ class ApiConstants {
 
   // Upload
   static const String upload = '/api/upload';
+  static const String uploadVideo = '/api/videos/upload';
 
   // Course endpoints
   static const String courses = '/api/courses';

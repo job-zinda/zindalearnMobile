@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../core/constants/feature_flags.dart';
 import '../core/utils/formatters.dart';
 import '../models/course_model.dart';
 import '../theme/app_colors.dart';
@@ -147,8 +148,12 @@ class CourseCard extends StatelessWidget {
                   // Price + action
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: FeatureFlags.showCoursePricing
+                        ? MainAxisAlignment.start
+                        : MainAxisAlignment.end,
                     children: [
-                      Expanded(child: _priceBlock()),
+                      if (FeatureFlags.showCoursePricing)
+                        Expanded(child: _priceBlock()),
                       _actionButton(style.accent),
                     ],
                   ),

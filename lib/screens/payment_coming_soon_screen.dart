@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../core/constants/feature_flags.dart';
 import '../core/utils/formatters.dart';
 import '../models/course_model.dart';
 import '../theme/app_colors.dart';
@@ -77,23 +78,25 @@ class PaymentComingSoonScreen extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.85),
                   ),
                 ),
-                const SizedBox(height: 24),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    Formatters.price(course.effectivePrice),
-                    style: GoogleFonts.dmSans(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                if (FeatureFlags.showCoursePricing) ...[
+                  const SizedBox(height: 24),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      Formatters.price(course.effectivePrice),
+                      style: GoogleFonts.dmSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
-                ),
+                ],
                 const Spacer(),
                 SizedBox(
                   width: double.infinity,

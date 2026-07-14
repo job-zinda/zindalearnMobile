@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import '../core/constants/feature_flags.dart';
 import '../core/network/api_exceptions.dart';
 import '../core/utils/formatters.dart';
 import '../models/course_model.dart';
@@ -509,15 +510,17 @@ class _CourseCard extends StatelessWidget {
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    Text(
-                      course.isFree ? 'Free' : Formatters.price(course.effectivePrice),
-                      style: GoogleFonts.dmSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.brand,
+                    if (FeatureFlags.showCoursePricing) ...[
+                      Text(
+                        course.isFree ? 'Free' : Formatters.price(course.effectivePrice),
+                        style: GoogleFonts.dmSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.brand,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
+                      const SizedBox(width: 10),
+                    ],
                     const Icon(Icons.people_outline_rounded, size: 14, color: AppColors.faint),
                     const SizedBox(width: 3),
                     Text(

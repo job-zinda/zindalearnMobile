@@ -81,6 +81,8 @@ class InstructorService {
     num discountPrice = 0,
     bool isFree = false,
     String thumbnail = '',
+    String previewVideo = '',
+    String previewVideoPublicId = '',
   }) async {
     final response = await _client.post(
       ApiConstants.instructorCourse,
@@ -95,6 +97,8 @@ class InstructorService {
         'isFree': isFree,
         'currency': 'INR',
         'thumbnail': thumbnail,
+        'previewVideo': previewVideo,
+        'previewVideoPublicId': previewVideoPublicId,
       },
     );
     final data = response.data as Map<String, dynamic>;
@@ -112,6 +116,8 @@ class InstructorService {
     num discountPrice = 0,
     bool isFree = false,
     String? thumbnail,
+    String? previewVideo,
+    String? previewVideoPublicId,
   }) async {
     final response = await _client.put(
       ApiConstants.course(id),
@@ -125,6 +131,8 @@ class InstructorService {
         'discountPrice': isFree ? 0 : discountPrice,
         'isFree': isFree,
         'thumbnail': ?thumbnail,
+        'previewVideo': ?previewVideo,
+        'previewVideoPublicId': ?previewVideoPublicId,
       },
     );
     final data = response.data as Map<String, dynamic>;

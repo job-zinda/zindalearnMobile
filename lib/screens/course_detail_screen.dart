@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import '../core/constants/feature_flags.dart';
 import '../core/network/api_exceptions.dart';
 import '../core/utils/formatters.dart';
 import '../models/course_model.dart';
@@ -257,8 +258,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                     _meta('🎯', course.level),
                   ],
                 ),
-                const SizedBox(height: 14),
-                _priceRow(course),
+                if (FeatureFlags.showCoursePricing) ...[
+                  const SizedBox(height: 14),
+                  _priceRow(course),
+                ],
               ],
             ),
           ),
@@ -503,6 +506,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     final enrollment = context.watch<EnrollmentProvider>();
     final enrolled = enrollment.isEnrolled(course.id);
     final enrolling = enrollment.isEnrolling(course.id);
+    final showPriceBlock = !enrolled && FeatureFlags.showCoursePricing;
+    final wideButton = enrolled || !FeatureFlags.showCoursePricing;
 
     return Container(
       padding: EdgeInsets.fromLTRB(
@@ -513,7 +518,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       ),
       child: Row(
         children: [
-          if (!enrolled) ...[
+          if (showPriceBlock) ...[
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -544,11 +549,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
             const SizedBox(width: 12),
           ],
           Expanded(
-            flex: enrolled ? 1 : 0,
+            flex: wideButton ? 1 : 0,
             child: _CtaButton(
               enrolled: enrolled,
               loading: enrolling,
-              wide: enrolled,
+              wide: wideButton,
               label: enrolled ? 'Continue learning' : 'Enroll Now',
               onTap: enrolling
                   ? null
@@ -818,32 +823,34 @@ class _EnrollSheet extends StatelessWidget {
                 color: AppColors.muted,
               ),
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Text(
-                  course.isFree
-                      ? 'Free'
-                      : Formatters.price(course.effectivePrice),
-                  style: GoogleFonts.dmSans(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.brand,
-                  ),
-                ),
-                if (course.hasDiscount) ...[
-                  const SizedBox(width: 10),
+            if (FeatureFlags.showCoursePricing) ...[
+              const SizedBox(height: 16),
+              Row(
+                children: [
                   Text(
-                    Formatters.price(course.price),
+                    course.isFree
+                        ? 'Free'
+                        : Formatters.price(course.effectivePrice),
                     style: GoogleFonts.dmSans(
-                      fontSize: 14,
-                      color: AppColors.faint,
-                      decoration: TextDecoration.lineThrough,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.brand,
                     ),
                   ),
+                  if (course.hasDiscount) ...[
+                    const SizedBox(width: 10),
+                    Text(
+                      Formatters.price(course.price),
+                      style: GoogleFonts.dmSans(
+                        fontSize: 14,
+                        color: AppColors.faint,
+                        decoration: TextDecoration.lineThrough,
+                      ),
+                    ),
+                  ],
                 ],
-              ],
-            ),
+              ),
+            ],
             const SizedBox(height: 20),
             Row(
               children: [
