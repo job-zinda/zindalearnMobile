@@ -71,4 +71,7 @@ class ApiConstants {
 
   // Support
   static const String supportTickets = '/api/support/tickets';
+
+  // Public
+  static const String activeBanners = '/api/public/banners';
 }

@@ -46,11 +46,14 @@ class EnrolledCourseCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CourseThumbnail(
-                  imageUrl: course.thumbnail,
-                  category: course.category,
-                  height: 62,
-                  borderRadius: BorderRadius.circular(12),
+                SizedBox(
+                  width: 62,
+                  child: CourseThumbnail(
+                    imageUrl: course.thumbnail,
+                    category: course.category,
+                    height: 62,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

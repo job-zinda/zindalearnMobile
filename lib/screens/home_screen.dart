@@ -1,10 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../models/banner_model.dart';
 import '../models/enrollment_model.dart';
+import '../models/progress_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/course_provider.dart';
 import '../providers/enrollment_provider.dart';
+import '../services/banner_service.dart';
+import '../services/progress_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/category_style.dart';
 import '../widgets/app_drawer.dart';
@@ -27,6 +34,11 @@ class _HomeScreenState extends State<HomeScreen>
   late final AnimationController _entryCtrl;
   late final Animation<double> _entryFade;
   late final Animation<Offset> _entrySlide;
+
+  final _bannerService = BannerService();
+  final _progressService = ProgressService();
+  List<BannerModel> _banners = [];
+  ProgressOverview? _overview;
 
   // (apiValue, label)
   static const _categories = <MapEntry<String, String>>[
@@ -53,12 +65,26 @@ class _HomeScreenState extends State<HomeScreen>
       CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOutCubic),
     );
     _entryCtrl.forward();
+    _loadDashboardExtras();
   }
 
   @override
   void dispose() {
     _entryCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadDashboardExtras() async {
+    // Banner and stats are supplementary decoration for the dashboard — a
+    // failure to load either shouldn't block or error out the rest of Home.
+    try {
+      final banners = await _bannerService.getActiveBanners();
+      if (mounted) setState(() => _banners = banners);
+    } catch (_) {}
+    try {
+      final overview = await _progressService.getOverview();
+      if (mounted) setState(() => _overview = overview);
+    } catch (_) {}
   }
 
   void _openCourseByCategory(String category) {
@@ -85,6 +111,8 @@ class _HomeScreenState extends State<HomeScreen>
                   _greeting(),
                   _searchBar(),
                   _continueLearning(),
+                  _banner(),
+                  _statsRow(),
                   _categoriesSection(),
                   _popularSection(),
                   const SizedBox(height: 20),
@@ -211,6 +239,64 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  // ---------------- Promo banner ----------------
+
+  Widget _banner() {
+    if (_banners.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+      child: _BannerCarousel(banners: _banners),
+    );
+  }
+
+  // ---------------- Stats ----------------
+
+  Widget _statsRow() {
+    final overview = _overview;
+    if (overview == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 0, 18, 20),
+      child: GridView.count(
+        crossAxisCount: 2,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 1.3,
+        children: [
+          _StatCard(
+            icon: Icons.menu_book_rounded,
+            iconColor: const Color(0xFF2563EB),
+            iconBg: const Color(0xFFDBEAFE),
+            value: '${overview.totalEnrolled}',
+            label: 'Courses Enrolled',
+          ),
+          _StatCard(
+            icon: Icons.access_time_filled_rounded,
+            iconColor: AppColors.brand,
+            iconBg: AppColors.brandFaint,
+            value: overview.watchTimeLabel,
+            label: 'Hours Learned',
+          ),
+          _StatCard(
+            icon: Icons.emoji_events_rounded,
+            iconColor: const Color(0xFFD97706),
+            iconBg: const Color(0xFFFEF3C7),
+            value: '${overview.certificates}',
+            label: 'Certificates',
+          ),
+          _StatCard(
+            icon: Icons.trending_up_rounded,
+            iconColor: const Color(0xFF059669),
+            iconBg: const Color(0xFFD1FAE5),
+            value: '${overview.points}',
+            label: 'Skill Points',
+          ),
+        ],
       ),
     );
   }
@@ -402,11 +488,14 @@ class _ContinueCard extends StatelessWidget {
             const SizedBox(height: 10),
             Row(
               children: [
-                CourseThumbnail(
-                  imageUrl: course.thumbnail,
-                  category: course.category,
-                  height: 48,
-                  borderRadius: BorderRadius.circular(10),
+                SizedBox(
+                  width: 48,
+                  child: CourseThumbnail(
+                    imageUrl: course.thumbnail,
+                    category: course.category,
+                    height: 48,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -475,6 +564,231 @@ class _ContinueCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBg;
+  final String value;
+  final String label;
+
+  const _StatCard({
+    required this.icon,
+    required this.iconColor,
+    required this.iconBg,
+    required this.value,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border, width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            decoration:
+                BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(9)),
+            alignment: Alignment.center,
+            child: Icon(icon, size: 16, color: iconColor),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: GoogleFonts.dmSans(
+                fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.ink),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label.toUpperCase(),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.dmSans(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppColors.faint,
+              letterSpacing: 0.3,
+              height: 1.15,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Auto-advancing carousel for admin-configured promo banners — mirrors the
+/// web dashboard's BannerCarousel (see zindalearnFEWeb/src/components/
+/// BannerCarousel.jsx), 6s autoplay with dot indicators.
+class _BannerCarousel extends StatefulWidget {
+  final List<BannerModel> banners;
+  const _BannerCarousel({required this.banners});
+
+  @override
+  State<_BannerCarousel> createState() => _BannerCarouselState();
+}
+
+class _BannerCarouselState extends State<_BannerCarousel> {
+  late final PageController _pageCtrl;
+  Timer? _timer;
+  int _page = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageCtrl = PageController();
+    if (widget.banners.length > 1) {
+      _timer = Timer.periodic(const Duration(seconds: 6), (_) {
+        if (!mounted || !_pageCtrl.hasClients) return;
+        final next = (_page + 1) % widget.banners.length;
+        _pageCtrl.animateToPage(
+          next,
+          duration: const Duration(milliseconds: 450),
+          curve: Curves.easeOut,
+        );
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pageCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _openLink(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri != null && await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  Widget _fallbackBg() {
+    return const DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.brandMid, AppColors.brandDark],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        AspectRatio(
+          aspectRatio: 16 / 8,
+          child: PageView.builder(
+            controller: _pageCtrl,
+            itemCount: widget.banners.length,
+            onPageChanged: (i) => setState(() => _page = i),
+            itemBuilder: (_, i) {
+              final banner = widget.banners[i];
+              return GestureDetector(
+                onTap: banner.linkUrl.isNotEmpty ? () => _openLink(banner.linkUrl) : null,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (banner.imageUrl.isNotEmpty)
+                        Image.network(
+                          banner.imageUrl,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, progress) =>
+                              progress == null ? child : _fallbackBg(),
+                          errorBuilder: (context, _, _) => _fallbackBg(),
+                        )
+                      else
+                        _fallbackBg(),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withValues(alpha: 0),
+                              Colors.black.withValues(alpha: 0.65),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        left: 16,
+                        right: 16,
+                        bottom: 14,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              banner.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.dmSans(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
+                            if (banner.description.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                banner.description,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 12.5,
+                                  color: Colors.white.withValues(alpha: 0.85),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        if (widget.banners.length > 1) ...[
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(widget.banners.length, (i) {
+              final active = i == _page;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: active ? 18 : 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: active ? AppColors.brand : AppColors.border,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              );
+            }),
+          ),
+        ],
+      ],
     );
   }
 }

@@ -45,14 +45,18 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final tabs = [
+      HomeScreen(onNavTap: _onNavTap),
+      BrowseCoursesScreen(onNavTap: _onNavTap, currentIndex: 1),
+      MyLearningScreen(onNavTap: _onNavTap, currentIndex: 2),
+      MessagesScreen(onNavTap: _onNavTap),
+      ProfileScreen(onNavTap: _onNavTap),
+    ];
     return IndexedStack(
       index: _index,
       children: [
-        HomeScreen(onNavTap: _onNavTap),
-        BrowseCoursesScreen(onNavTap: _onNavTap, currentIndex: 1),
-        MyLearningScreen(onNavTap: _onNavTap, currentIndex: 2),
-        MessagesScreen(onNavTap: _onNavTap),
-        ProfileScreen(onNavTap: _onNavTap),
+        for (var i = 0; i < tabs.length; i++)
+          TickerMode(enabled: i == _index, child: tabs[i]),
       ],
     );
   }
