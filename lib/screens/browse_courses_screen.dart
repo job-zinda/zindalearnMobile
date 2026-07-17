@@ -41,14 +41,6 @@ class _BrowseCoursesScreenState extends State<BrowseCoursesScreen> {
     MapEntry('finance', 'Finance'),
   ];
 
-  static const _levels = <String?>[
-    null,
-    'Beginner',
-    'Intermediate',
-    'Advanced',
-    'Expert',
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -197,19 +189,6 @@ class _BrowseCoursesScreenState extends State<BrowseCoursesScreen> {
               label: c.value,
               selected: provider.category == c.key,
               onTap: () => provider.setCategory(c.key),
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 10),
-
-        // Level chips
-        _chipRow(
-          label: 'LEVEL',
-          children: _levels.map((lvl) {
-            return _FilterChip(
-              label: lvl ?? 'All',
-              selected: provider.level == lvl,
-              onTap: () => provider.setLevel(lvl),
             );
           }).toList(),
         ),

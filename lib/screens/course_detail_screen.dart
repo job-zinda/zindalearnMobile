@@ -8,6 +8,8 @@ import '../models/course_model.dart';
 import '../providers/enrollment_provider.dart';
 import '../services/course_service.dart';
 import '../theme/app_colors.dart';
+import 'course_promo_player_screen.dart';
+import 'lesson_player_screen.dart';
 import 'payment_coming_soon_screen.dart';
 import '../theme/category_style.dart';
 import '../widgets/course_thumbnail.dart';
@@ -71,10 +73,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
           Expanded(
             child: course == null
                 ? (_error != null
-                    ? _errorView()
-                    : const Center(
-                        child: CircularProgressIndicator(
-                            color: AppColors.brand)))
+                      ? _errorView()
+                      : const Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.brand,
+                          ),
+                        ))
                 : _content(course),
           ),
           if (course != null) _stickyCta(course),
@@ -99,8 +103,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   borderRadius: BorderRadius.circular(11),
                   border: Border.all(color: AppColors.border, width: 1.5),
                 ),
-                child: const Icon(Icons.arrow_back_ios_new_rounded,
-                    size: 16, color: AppColors.ink),
+                child: const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  size: 16,
+                  color: AppColors.ink,
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -141,17 +148,22 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                 _fetch();
               },
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 22,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.brand,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text('Retry',
-                    style: GoogleFonts.dmSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white)),
+                child: Text(
+                  'Retry',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
               ),
             ),
           ],
@@ -184,7 +196,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   left: 12,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 5),
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.92),
                       borderRadius: BorderRadius.circular(8),
@@ -199,6 +213,33 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                     ),
                   ),
                 ),
+                if (course.previewVideo != null &&
+                    course.previewVideo!.isNotEmpty)
+                  Positioned.fill(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Material(
+                        color: Colors.black.withValues(alpha: 0.18),
+                        child: InkWell(
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => CoursePromoPlayerScreen(
+                                videoUrl: course.previewVideo!,
+                                title: course.title,
+                              ),
+                            ),
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.play_circle_fill_rounded,
+                              size: 56,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -224,8 +265,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                     Container(
                       width: 28,
                       height: 28,
-                      decoration:
-                          BoxDecoration(shape: BoxShape.circle, color: style.accent),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: style.accent,
+                      ),
                       alignment: Alignment.center,
                       child: Text(
                         course.instructor.initial,
@@ -251,8 +294,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   spacing: 16,
                   runSpacing: 6,
                   children: [
-                    _meta('⭐',
-                        Formatters.rating(course.rating, course.totalRatings)),
+                    _meta(
+                      '⭐',
+                      Formatters.rating(course.rating, course.totalRatings),
+                    ),
                     _meta('📖', Formatters.lessons(course.totalLessons)),
                     _meta('⏱', Formatters.duration(course.totalDuration)),
                     _meta('🎯', course.level),
@@ -284,8 +329,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       children: [
         Text(icon, style: const TextStyle(fontSize: 13)),
         const SizedBox(width: 5),
-        Text(text,
-            style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.muted)),
+        Text(
+          text,
+          style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.muted),
+        ),
       ],
     );
   }
@@ -362,8 +409,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                     decoration: BoxDecoration(
                       border: Border(
                         bottom: BorderSide(
-                          color:
-                              active ? AppColors.brand : Colors.transparent,
+                          color: active ? AppColors.brand : Colors.transparent,
                           width: 2.5,
                         ),
                       ),
@@ -373,8 +419,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                       textAlign: TextAlign.center,
                       style: GoogleFonts.dmSans(
                         fontSize: 15,
-                        fontWeight:
-                            active ? FontWeight.w700 : FontWeight.w500,
+                        fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                         color: active ? AppColors.brand : AppColors.faint,
                       ),
                     ),
@@ -448,8 +493,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                 )
               : const Padding(
                   padding: EdgeInsets.only(right: 8),
-                  child: Icon(Icons.check_rounded,
-                      size: 17, color: AppColors.brand),
+                  child: Icon(
+                    Icons.check_rounded,
+                    size: 17,
+                    color: AppColors.brand,
+                  ),
                 ),
           Expanded(
             child: Text(
@@ -470,6 +518,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     if (course.modules.isEmpty) {
       return _emptyTab('Curriculum coming soon');
     }
+    final enrolled = context.read<EnrollmentProvider>().isEnrolled(course.id);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 18),
       child: Column(
@@ -479,11 +528,34 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
             _ModuleTile(
               index: m + 1,
               module: course.modules[m],
-              enrolled: context
-                  .read<EnrollmentProvider>()
-                  .isEnrolled(course.id),
+              enrolled: enrolled,
+              onLessonTap: (lessonIndex) => _openLesson(course, m, lessonIndex),
             ),
         ],
+      ),
+    );
+  }
+
+  void _openLesson(CourseModel course, int moduleIndex, int lessonIndex) {
+    final enrolled = context.read<EnrollmentProvider>().isEnrolled(course.id);
+    final lesson = course.modules[moduleIndex].lessons[lessonIndex];
+    if (!enrolled && !lesson.isFree) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Enroll in this course to unlock this lesson.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => LessonPlayerScreen(
+          course: course,
+          enrolled: enrolled,
+          initialModuleIndex: moduleIndex,
+          initialLessonIndex: lessonIndex,
+        ),
       ),
     );
   }
@@ -494,8 +566,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 20, 18, 20),
       child: Center(
-        child: Text(text,
-            style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.faint)),
+        child: Text(
+          text,
+          style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.faint),
+        ),
       ),
     );
   }
@@ -511,7 +585,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
     return Container(
       padding: EdgeInsets.fromLTRB(
-          18, 12, 18, 12 + MediaQuery.of(context).padding.bottom),
+        18,
+        12,
+        18,
+        12 + MediaQuery.of(context).padding.bottom,
+      ),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(top: BorderSide(color: AppColors.border, width: 1.5)),
@@ -558,10 +636,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
               onTap: enrolling
                   ? null
                   : () => enrolled
-                      ? _openLearning(course)
-                      : course.isFree
-                          ? _confirmEnroll(course)
-                          : _showPaymentComingSoon(course),
+                        ? _openLearning(course)
+                        : course.isFree
+                        ? _confirmEnroll(course)
+                        : _showPaymentComingSoon(course),
             ),
           ),
         ],
@@ -570,9 +648,15 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   }
 
   void _openLearning(CourseModel course) {
+    for (var m = 0; m < course.modules.length; m++) {
+      if (course.modules[m].lessons.isNotEmpty) {
+        _openLesson(course, m, 0);
+        return;
+      }
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('The lesson player is coming soon.'),
+        content: Text('No lessons have been added to this course yet.'),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -597,8 +681,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     );
     if (confirmed != true || !mounted) return;
 
-    final error =
-        await context.read<EnrollmentProvider>().enroll(course.id);
+    final error = await context.read<EnrollmentProvider>().enroll(course.id);
     if (!mounted) return;
 
     if (error == null) {
@@ -613,10 +696,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error),
-          behavior: SnackBarBehavior.floating,
-        ),
+        SnackBar(content: Text(error), behavior: SnackBarBehavior.floating),
       );
     }
   }
@@ -626,10 +706,12 @@ class _ModuleTile extends StatelessWidget {
   final int index;
   final Module module;
   final bool enrolled;
+  final ValueChanged<int> onLessonTap;
   const _ModuleTile({
     required this.index,
     required this.module,
     required this.enrolled,
+    required this.onLessonTap,
   });
 
   @override
@@ -664,8 +746,12 @@ class _ModuleTile extends StatelessWidget {
             ),
           ),
           children: [
-            for (final lesson in module.lessons)
-              _LessonRow(lesson: lesson, enrolled: enrolled),
+            for (var l = 0; l < module.lessons.length; l++)
+              _LessonRow(
+                lesson: module.lessons[l],
+                enrolled: enrolled,
+                onTap: () => onLessonTap(l),
+              ),
           ],
         ),
       ),
@@ -676,60 +762,66 @@ class _ModuleTile extends StatelessWidget {
 class _LessonRow extends StatelessWidget {
   final Lesson lesson;
   final bool enrolled;
-  const _LessonRow({required this.lesson, required this.enrolled});
+  final VoidCallback onTap;
+  const _LessonRow({
+    required this.lesson,
+    required this.enrolled,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final locked = !enrolled && !lesson.isFree;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 7),
-      child: Row(
-        children: [
-          Container(
-            width: 26,
-            height: 26,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: locked ? AppColors.border : AppColors.brandFaint,
-            ),
-            child: Icon(
-              locked ? Icons.lock_outline_rounded : Icons.play_arrow_rounded,
-              size: 15,
-              color: locked ? AppColors.faint : AppColors.brand,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              lesson.title,
-              style: GoogleFonts.dmSans(
-                fontSize: 13,
-                color: AppColors.ink,
-              ),
-            ),
-          ),
-          if (lesson.isFree && !enrolled)
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Row(
+          children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-              margin: const EdgeInsets.only(right: 8),
+              width: 26,
+              height: 26,
               decoration: BoxDecoration(
-                color: AppColors.brandFaint,
-                borderRadius: BorderRadius.circular(5),
+                shape: BoxShape.circle,
+                color: locked ? AppColors.border : AppColors.brandFaint,
               ),
+              child: Icon(
+                locked ? Icons.lock_outline_rounded : Icons.play_arrow_rounded,
+                size: 15,
+                color: locked ? AppColors.faint : AppColors.brand,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
               child: Text(
-                'Free',
-                style: GoogleFonts.dmSans(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.brand,
+                lesson.title,
+                style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.ink),
+              ),
+            ),
+            if (lesson.isFree && !enrolled)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                margin: const EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.brandFaint,
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: Text(
+                  'Free',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.brand,
+                  ),
                 ),
               ),
+            Text(
+              lesson.duration > 0 ? Formatters.duration(lesson.duration) : '',
+              style: GoogleFonts.dmSans(fontSize: 11, color: AppColors.faint),
             ),
-          Text(
-            lesson.duration > 0 ? Formatters.duration(lesson.duration) : '',
-            style: GoogleFonts.dmSans(fontSize: 11, color: AppColors.faint),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -754,8 +846,7 @@ class _CtaButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final child = Container(
       width: wide ? double.infinity : null,
-      padding: EdgeInsets.symmetric(
-          horizontal: wide ? 20 : 34, vertical: 16),
+      padding: EdgeInsets.symmetric(horizontal: wide ? 20 : 34, vertical: 16),
       decoration: BoxDecoration(
         color: AppColors.brand,
         borderRadius: BorderRadius.circular(16),
@@ -766,7 +857,9 @@ class _CtaButton extends StatelessWidget {
               width: 20,
               height: 20,
               child: CircularProgressIndicator(
-                  strokeWidth: 2.5, color: Colors.white),
+                strokeWidth: 2.5,
+                color: Colors.white,
+              ),
             )
           : Text(
               enrolled ? label : '$label  →',
@@ -818,10 +911,7 @@ class _EnrollSheet extends StatelessWidget {
               course.title,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.dmSans(
-                fontSize: 14,
-                color: AppColors.muted,
-              ),
+              style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.muted),
             ),
             if (FeatureFlags.showCoursePricing) ...[
               const SizedBox(height: 16),
@@ -863,8 +953,7 @@ class _EnrollSheet extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(14),
-                        border:
-                            Border.all(color: AppColors.border, width: 1.5),
+                        border: Border.all(color: AppColors.border, width: 1.5),
                       ),
                       child: Text(
                         'Cancel',

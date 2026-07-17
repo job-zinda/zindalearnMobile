@@ -12,6 +12,7 @@ import '../theme/course_status_style.dart';
 import '../widgets/course_thumbnail.dart';
 import 'instructor/create_edit_course_screen.dart';
 import 'instructor/instructor_course_detail_screen.dart';
+import 'instructor/instructor_live_classes_screen.dart';
 
 /// The one extra screen instructors get on top of the regular student app —
 /// reachable from the side drawer. Lets an instructor see their course
@@ -40,7 +41,8 @@ class _InstructorStudioScreenState extends State<InstructorStudioScreen> {
       }
     });
     _scrollCtrl.addListener(() {
-      if (_scrollCtrl.position.pixels > _scrollCtrl.position.maxScrollExtent - 200) {
+      if (_scrollCtrl.position.pixels >
+          _scrollCtrl.position.maxScrollExtent - 200) {
         context.read<InstructorProvider>().loadMore();
       }
     });
@@ -80,7 +82,9 @@ class _InstructorStudioScreenState extends State<InstructorStudioScreen> {
         content: Text('Delete "${course.title}"? This cannot be undone.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text('Delete', style: TextStyle(color: AppColors.red)),
@@ -115,7 +119,9 @@ class _InstructorStudioScreenState extends State<InstructorStudioScreen> {
           ]),
           child: CustomScrollView(
             controller: _scrollCtrl,
-            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
             slivers: [
               SliverToBoxAdapter(child: _header(context)),
               SliverToBoxAdapter(
@@ -149,8 +155,11 @@ class _InstructorStudioScreenState extends State<InstructorStudioScreen> {
                 borderRadius: BorderRadius.circular(11),
                 border: Border.all(color: AppColors.border, width: 1.5),
               ),
-              child: const Icon(Icons.arrow_back_ios_new_rounded,
-                  size: 16, color: AppColors.ink),
+              child: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                size: 16,
+                color: AppColors.ink,
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -161,11 +170,17 @@ class _InstructorStudioScreenState extends State<InstructorStudioScreen> {
                 Text(
                   'Instructor Studio',
                   style: GoogleFonts.dmSans(
-                      fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.ink),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink,
+                  ),
                 ),
                 Text(
                   'Create and manage your courses.',
-                  style: GoogleFonts.dmSans(fontSize: 12.5, color: AppColors.muted),
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12.5,
+                    color: AppColors.muted,
+                  ),
                 ),
               ],
             ),
@@ -178,27 +193,65 @@ class _InstructorStudioScreenState extends State<InstructorStudioScreen> {
   Widget _createButton() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
-      child: SizedBox(
-        width: double.infinity,
-        height: 50,
-        child: ElevatedButton(
-          onPressed: _createCourse,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.brand,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Row(
+        children: [
+          Expanded(
+            child: SizedBox(
+              height: 50,
+              child: ElevatedButton(
+                onPressed: _createCourse,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.brand,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.add_circle_rounded, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Create Course',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.add_circle_rounded, size: 20),
-              const SizedBox(width: 8),
-              Text('Create Course',
-                  style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700)),
-            ],
+          const SizedBox(width: 10),
+          Tooltip(
+            message: 'Live Classes',
+            child: SizedBox(
+              height: 50,
+              width: 50,
+              child: OutlinedButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const InstructorLiveClassesScreen(),
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  side: const BorderSide(color: AppColors.border, width: 1.5),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: const Icon(
+                  Icons.videocam_outlined,
+                  color: AppColors.brand,
+                ),
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -215,7 +268,8 @@ class _InstructorStudioScreenState extends State<InstructorStudioScreen> {
           final filter = _filters[i];
           final active = instructor.statusFilter == filter;
           return GestureDetector(
-            onTap: () => context.read<InstructorProvider>().setStatusFilter(filter),
+            onTap: () =>
+                context.read<InstructorProvider>().setStatusFilter(filter),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
@@ -242,18 +296,22 @@ class _InstructorStudioScreenState extends State<InstructorStudioScreen> {
   }
 
   List<Widget> _courseSlivers(InstructorProvider instructor) {
-    if (instructor.myCoursesState == LoadState.loading && instructor.myCourses.isEmpty) {
+    if (instructor.myCoursesState == LoadState.loading &&
+        instructor.myCourses.isEmpty) {
       return const [
         SliverToBoxAdapter(
           child: Padding(
             padding: EdgeInsets.symmetric(vertical: 60),
-            child: Center(child: CircularProgressIndicator(color: AppColors.brand)),
+            child: Center(
+              child: CircularProgressIndicator(color: AppColors.brand),
+            ),
           ),
         ),
       ];
     }
 
-    if (instructor.myCoursesState == LoadState.error && instructor.myCourses.isEmpty) {
+    if (instructor.myCoursesState == LoadState.error &&
+        instructor.myCourses.isEmpty) {
       return [
         SliverToBoxAdapter(
           child: Padding(
@@ -264,12 +322,16 @@ class _InstructorStudioScreenState extends State<InstructorStudioScreen> {
                 Text(
                   instructor.myCoursesError ?? 'Something went wrong.',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.muted),
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    color: AppColors.muted,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 TextButton(
-                  onPressed: () =>
-                      context.read<InstructorProvider>().loadMyCourses(refresh: true),
+                  onPressed: () => context
+                      .read<InstructorProvider>()
+                      .loadMyCourses(refresh: true),
                   child: const Text('Retry'),
                 ),
               ],
@@ -308,7 +370,10 @@ class _InstructorStudioScreenState extends State<InstructorStudioScreen> {
                   child: SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.brand),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: AppColors.brand,
+                    ),
                   ),
                 ),
               );
@@ -316,9 +381,12 @@ class _InstructorStudioScreenState extends State<InstructorStudioScreen> {
             final course = instructor.myCourses[i];
             return _CourseCard(
               course: course,
-              onManage: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => InstructorCourseDetailScreen(courseId: course.id),
-              )),
+              onManage: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      InstructorCourseDetailScreen(courseId: course.id),
+                ),
+              ),
               onDelete: () => _delete(course),
             );
           },
@@ -425,7 +493,11 @@ class _CourseCard extends StatelessWidget {
   final CourseModel course;
   final VoidCallback onManage;
   final VoidCallback onDelete;
-  const _CourseCard({required this.course, required this.onManage, required this.onDelete});
+  const _CourseCard({
+    required this.course,
+    required this.onManage,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -445,13 +517,18 @@ class _CourseCard extends StatelessWidget {
                 imageUrl: course.thumbnail,
                 category: course.category,
                 height: 120,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(18),
+                ),
               ),
               Positioned(
                 top: 10,
                 right: 10,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: status.background,
                     borderRadius: BorderRadius.circular(100),
@@ -486,7 +563,11 @@ class _CourseCard extends StatelessWidget {
                       color: Colors.black.withValues(alpha: 0.5),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.delete_outline_rounded, size: 15, color: Colors.white),
+                    child: const Icon(
+                      Icons.delete_outline_rounded,
+                      size: 15,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -512,7 +593,9 @@ class _CourseCard extends StatelessWidget {
                   children: [
                     if (FeatureFlags.showCoursePricing) ...[
                       Text(
-                        course.isFree ? 'Free' : Formatters.price(course.effectivePrice),
+                        course.isFree
+                            ? 'Free'
+                            : Formatters.price(course.effectivePrice),
                         style: GoogleFonts.dmSans(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
@@ -521,11 +604,18 @@ class _CourseCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 10),
                     ],
-                    const Icon(Icons.people_outline_rounded, size: 14, color: AppColors.faint),
+                    const Icon(
+                      Icons.people_outline_rounded,
+                      size: 14,
+                      color: AppColors.faint,
+                    ),
                     const SizedBox(width: 3),
                     Text(
                       '${course.totalStudents} Students',
-                      style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.muted),
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        color: AppColors.muted,
+                      ),
                     ),
                   ],
                 ),
@@ -535,8 +625,13 @@ class _CourseCard extends StatelessWidget {
                   child: OutlinedButton(
                     onPressed: onManage,
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppColors.brand, width: 1.5),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      side: const BorderSide(
+                        color: AppColors.brand,
+                        width: 1.5,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                       padding: const EdgeInsets.symmetric(vertical: 10),
                     ),
                     child: Text(

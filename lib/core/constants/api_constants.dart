@@ -56,6 +56,12 @@ class ApiConstants {
   // Live classes
   static const String studentLiveClasses = '/api/live-classes/student';
   static String joinLiveClass(String id) => '/api/live-classes/$id/join';
+  static const String instructorLiveClasses =
+      '/api/live-classes/instructor/all';
+  static const String liveClasses = '/api/live-classes';
+  static String liveClass(String id) => '/api/live-classes/$id';
+  static String startLiveClass(String id) => '/api/live-classes/$id/start';
+  static String endLiveClass(String id) => '/api/live-classes/$id/end';
 
   // Progress
   static const String progressOverview = '/api/student/progress/overview';
@@ -64,11 +70,13 @@ class ApiConstants {
   // Certificates
   static const String certificateStats = '/api/student/certificates/stats';
   static const String certificates = '/api/student/certificates';
-  static const String featuredCertificate = '/api/student/certificates/featured';
+  static const String featuredCertificate =
+      '/api/student/certificates/featured';
 
   // Settings
   static const String settings = '/api/student/settings';
-  static const String updateNotifications = '/api/student/settings/notifications';
+  static const String updateNotifications =
+      '/api/student/settings/notifications';
 
   // Support
   static const String supportTickets = '/api/support/tickets';

@@ -466,11 +466,24 @@ class _CreateEditCourseScreenState extends State<CreateEditCourseScreen> {
                         ],
                       ),
                       const SizedBox(height: 24),
+                      if (_uploadingThumbnail || _uploadingVideo) ...[
+                        Text(
+                          'Waiting for upload to finish…',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.dmSans(
+                              fontSize: 12.5, color: AppColors.muted),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
                       SizedBox(
                         width: double.infinity,
                         height: 52,
                         child: ElevatedButton(
-                          onPressed: _saving ? null : _submit,
+                          onPressed: (_saving ||
+                                  _uploadingThumbnail ||
+                                  _uploadingVideo)
+                              ? null
+                              : _submit,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.brand,
                             foregroundColor: Colors.white,

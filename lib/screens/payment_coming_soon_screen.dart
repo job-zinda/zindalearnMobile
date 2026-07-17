@@ -1,16 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../core/constants/feature_flags.dart';
 import '../core/utils/formatters.dart';
 import '../models/course_model.dart';
 import '../theme/app_colors.dart';
 
-/// Shown when a learner tries to enroll in a paid course. Online payments
-/// aren't wired up yet, so this stands in for the checkout flow.
+const _whatsappGreen = Color(0xFF25D366);
+const _whatsappNumber = '919847561998'; // +91 98475 61998
+
+/// Shown when a learner tries to enroll in a paid course. Online checkout
+/// isn't wired up yet, so this points them to WhatsApp for manual payment
+/// instead of a real payment flow.
 class PaymentComingSoonScreen extends StatelessWidget {
   final CourseModel course;
 
   const PaymentComingSoonScreen({super.key, required this.course});
+
+  Future<void> _openWhatsApp() async {
+    final message = Uri.encodeComponent(
+      "Hi! I'd like to enroll in \"${course.title}\" — can you share the payment details?",
+    );
+    final uri = Uri.parse('https://wa.me/$_whatsappNumber?text=$message');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,19 +61,19 @@ class PaymentComingSoonScreen extends StatelessWidget {
                 Container(
                   width: 96,
                   height: 96,
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.14),
+                    color: _whatsappGreen,
                   ),
                   child: const Icon(
-                    Icons.payments_outlined,
+                    Icons.chat_rounded,
                     size: 44,
                     color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 28),
                 Text(
-                  'Payments are coming soon',
+                  'Contact us on WhatsApp',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.dmSans(
                     fontSize: 24,
@@ -68,9 +83,9 @@ class PaymentComingSoonScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  "We're setting up secure checkout so you can enroll in "
-                  '"${course.title}". A payment link will be added here '
-                  'soon — check back shortly!',
+                  'Online payments aren\'t live yet. Message us on WhatsApp '
+                  'for payment details and we\'ll get you enrolled in '
+                  '"${course.title}".',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.dmSans(
                     fontSize: 15,
@@ -101,7 +116,7 @@ class PaymentComingSoonScreen extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
+                    onTap: _openWhatsApp,
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       alignment: Alignment.center,
@@ -109,14 +124,43 @@ class PaymentComingSoonScreen extends StatelessWidget {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: Text(
-                        'Got it',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.brand,
-                        ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.chat_rounded,
+                              size: 20, color: _whatsappGreen),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Chat on WhatsApp',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.brand,
+                            ),
+                          ),
+                        ],
                       ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '+91 98475 61998',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withValues(alpha: 0.75),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Text(
+                    'Maybe later',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white.withValues(alpha: 0.75),
                     ),
                   ),
                 ),

@@ -87,6 +87,18 @@ class _HomeScreenState extends State<HomeScreen>
     } catch (_) {}
   }
 
+  /// Pull-to-refresh: retries everything. The backend is on Render's free
+  /// tier and can be asleep on first request (see api_client.dart), so any
+  /// of these can transiently fail on a cold app open — this gives users an
+  /// obvious way to recover instead of being stuck on a stale error state.
+  Future<void> _onRefresh() async {
+    await Future.wait([
+      context.read<CourseProvider>().loadCourses(refresh: true),
+      context.read<EnrollmentProvider>().loadEnrollments(refresh: true),
+      _loadDashboardExtras(),
+    ]);
+  }
+
   void _openCourseByCategory(String category) {
     context.read<CourseProvider>().setCategory(category);
     widget.onNavTap?.call(1);
@@ -103,20 +115,25 @@ class _HomeScreenState extends State<HomeScreen>
           opacity: _entryFade,
           child: SlideTransition(
             position: _entrySlide,
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _greeting(),
-                  _searchBar(),
-                  _continueLearning(),
-                  _banner(),
-                  _statsRow(),
-                  _categoriesSection(),
-                  _popularSection(),
-                  const SizedBox(height: 20),
-                ],
+            child: RefreshIndicator(
+              color: AppColors.brand,
+              onRefresh: _onRefresh,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics()),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _greeting(),
+                    _searchBar(),
+                    _continueLearning(),
+                    _banner(),
+                    _statsRow(),
+                    _categoriesSection(),
+                    _popularSection(),
+                    const SizedBox(height: 20),
+                  ],
+                ),
               ),
             ),
           ),
@@ -405,6 +422,27 @@ class _HomeScreenState extends State<HomeScreen>
             padding: EdgeInsets.symmetric(vertical: 40),
             child: Center(
               child: CircularProgressIndicator(color: AppColors.brand),
+            ),
+          )
+        else if (provider.state == LoadState.error && courses.isEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 10, 18, 10),
+            child: GestureDetector(
+              onTap: () => provider.loadCourses(refresh: true),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      "Couldn't load courses — the server may still be "
+                      'waking up. Tap to retry.',
+                      style: GoogleFonts.dmSans(
+                          fontSize: 13.5, color: AppColors.muted),
+                    ),
+                  ),
+                  const Icon(Icons.refresh_rounded,
+                      size: 18, color: AppColors.brand),
+                ],
+              ),
             ),
           )
         else if (courses.isEmpty)
