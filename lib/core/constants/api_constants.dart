@@ -1,6 +1,7 @@
 class ApiConstants {
   // static const String baseUrl = 'http://localhost:5005';
-  static const String baseUrl = 'https://zindalearnbackend-1.onrender.com';
+  // static const String baseUrl = 'https://zindalearnbackend-1.onrender.com';
+  static const String baseUrl = 'https://api.zinda-learn.com';
 
   // Google Sign-In (Firebase "zindalearn" project Web client ID — used as
   // serverClientId so Android/iOS return a backend-verifiable idToken)
