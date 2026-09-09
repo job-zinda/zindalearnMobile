@@ -176,6 +176,8 @@ class InstructorService {
     String description = '',
     String videoUrl = '',
     String source = '',
+    String bunnyVideoId = '',
+    String hlsUrl = '',
     int duration = 0,
     bool isFree = false,
   }) async {
@@ -186,6 +188,8 @@ class InstructorService {
         'description': description,
         'videoUrl': videoUrl,
         'source': source,
+        'bunnyVideoId': bunnyVideoId,
+        'hlsUrl': hlsUrl,
         'duration': duration,
         'isFree': isFree,
       },

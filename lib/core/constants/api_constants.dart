@@ -1,7 +1,8 @@
 class ApiConstants {
-  // static const String baseUrl = 'http://localhost:5005';
-  // static const String baseUrl = 'https://zindalearnbackend-1.onrender.com';
-  static const String baseUrl = 'https://api.zinda-learn.com';
+  static const String baseUrl = 'https://api.zinda-learn.com'; // Physical Android Phone (Same Wi-Fi)
+  // static const String baseUrl = 'http://10.0.2.2:5005'; // Android Emulator
+  // static const String baseUrl = 'http://localhost:5005'; // iOS / Web / adb reverse
+  // static const String baseUrl = 'https://api.zinda-learn.com'; // Production
 
   // Google Sign-In (Firebase "zindalearn" project Web client ID — used as
   // serverClientId so Android/iOS return a backend-verifiable idToken)
@@ -22,6 +23,12 @@ class ApiConstants {
   // Upload
   static const String upload = '/api/upload';
   static const String uploadVideo = '/api/videos/upload';
+
+  // Video playback (Bunny.net secure HLS URLs)
+  static String videoPlaybackUrl(String courseId, String sectionId, String lessonId) =>
+      '/api/videos/playback/$courseId/$sectionId/$lessonId';
+  static String videoStatus(String bunnyVideoId) =>
+      '/api/videos/status/$bunnyVideoId';
 
   // Course endpoints
   static const String courses = '/api/courses';

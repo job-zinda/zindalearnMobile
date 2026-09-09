@@ -37,6 +37,9 @@ class Lesson {
   final int duration; // minutes
   final bool isFree;
   final String videoUrl;
+  final String source; // 'upload' | 'youtube' | 'bunny' | ''
+  final String bunnyVideoId; // Bunny.net Stream video GUID
+  final String hlsUrl; // HLS manifest URL for adaptive streaming
 
   Lesson({
     required this.id,
@@ -45,7 +48,13 @@ class Lesson {
     this.duration = 0,
     this.isFree = false,
     this.videoUrl = '',
+    this.source = '',
+    this.bunnyVideoId = '',
+    this.hlsUrl = '',
   });
+
+  /// Whether this lesson uses Bunny.net HLS streaming.
+  bool get isBunny => source == 'bunny' && bunnyVideoId.isNotEmpty;
 
   factory Lesson.fromJson(Map<String, dynamic> json) {
     return Lesson(
@@ -55,6 +64,9 @@ class Lesson {
       duration: _toInt(json['duration']),
       isFree: json['isFree'] == true,
       videoUrl: (json['videoUrl'] ?? '').toString(),
+      source: (json['source'] ?? '').toString(),
+      bunnyVideoId: (json['bunnyVideoId'] ?? '').toString(),
+      hlsUrl: (json['hlsUrl'] ?? '').toString(),
     );
   }
 }

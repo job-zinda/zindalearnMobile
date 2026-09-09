@@ -42,7 +42,10 @@ dependencies:
   url_launcher: ^6.3.1
   firebase_core: ^4.11.0
   firebase_auth: ^6.5.4
-  video_player: ^2.10.0
+  video_player: ^2.10.0        # kept for backward compat (promo player)
+  media_kit: ^1.2.6             # HLS adaptive streaming player (core)
+  media_kit_video: ^1.3.1       # Video rendering widget
+  media_kit_libs_video: ^1.0.7  # Platform-specific native libs
 
 dev_dependencies:
   flutter_test:

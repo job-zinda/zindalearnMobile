@@ -146,7 +146,7 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
 
-      return _handleAuth(() async {
+      return await _handleAuth(() async {
         final response = await _authService.googleLogin(
           token: firebaseIdToken,
           email: account.email,

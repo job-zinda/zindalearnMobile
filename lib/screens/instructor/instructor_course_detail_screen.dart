@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../core/network/api_exceptions.dart';
 import '../../core/utils/formatters.dart';
@@ -7,6 +9,7 @@ import '../../models/course_model.dart';
 import '../../providers/instructor_provider.dart';
 import '../../services/course_service.dart';
 import '../../services/instructor_service.dart';
+import '../../services/upload_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/course_status_style.dart';
 import 'create_edit_course_screen.dart';
@@ -144,7 +147,7 @@ class _InstructorCourseDetailScreenState
   Future<void> _addLesson(String sectionId) async {
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (_) => const _LessonDialog(),
+      builder: (_) => _LessonDialog(courseId: widget.courseId),
     );
     if (result == null) return;
 
@@ -156,6 +159,8 @@ class _InstructorCourseDetailScreenState
         title: result['title'] as String,
         videoUrl: result['videoUrl'] as String? ?? '',
         source: result['source'] as String? ?? '',
+        bunnyVideoId: result['bunnyVideoId'] as String? ?? '',
+        hlsUrl: result['hlsUrl'] as String? ?? '',
         duration: result['duration'] as int? ?? 0,
         isFree: result['isFree'] as bool? ?? false,
       );
@@ -752,7 +757,8 @@ class _SectionDialogState extends State<_SectionDialog> {
 }
 
 class _LessonDialog extends StatefulWidget {
-  const _LessonDialog();
+  final String courseId;
+  const _LessonDialog({required this.courseId});
 
   @override
   State<_LessonDialog> createState() => _LessonDialogState();
@@ -762,8 +768,12 @@ class _LessonDialogState extends State<_LessonDialog> {
   final _titleCtrl = TextEditingController();
   final _videoCtrl = TextEditingController();
   final _durationCtrl = TextEditingController();
-  String _source = '';
+  String _source = 'bunny';
+  String _bunnyVideoId = '';
+  String _hlsUrl = '';
   bool _isFree = false;
+  bool _uploading = false;
+  String? _uploadStatusText;
 
   @override
   void dispose() {
@@ -773,6 +783,54 @@ class _LessonDialogState extends State<_LessonDialog> {
     super.dispose();
   }
 
+  Future<void> _pickAndUploadVideo() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickVideo(source: ImageSource.gallery);
+    if (picked == null || !mounted) return;
+
+    final file = File(picked.path);
+    final fileName = picked.name;
+
+    setState(() {
+      _uploading = true;
+      _uploadStatusText = 'Uploading to Bunny.net...';
+      if (_titleCtrl.text.trim().isEmpty) {
+        _titleCtrl.text = fileName.replaceAll(RegExp(r'\.[a-zA-Z0-9]+$'), '');
+      }
+    });
+
+    try {
+      final result = await UploadService().uploadVideo(
+        file,
+        courseId: widget.courseId,
+        title: _titleCtrl.text.trim(),
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _videoCtrl.text = result.url;
+        _source = result.source;
+        _bunnyVideoId = result.bunnyVideoId ?? '';
+        _hlsUrl = result.hlsUrl ?? '';
+        if (result.duration > 0) {
+          _durationCtrl.text = (result.duration / 60).ceil().toString();
+        }
+        _uploadStatusText = 'Uploaded to Bunny.net Stream!';
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Upload failed: $e'),
+          backgroundColor: AppColors.red,
+        ),
+      );
+      setState(() => _uploadStatusText = null);
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -780,25 +838,125 @@ class _LessonDialogState extends State<_LessonDialog> {
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TextField(
               controller: _titleCtrl,
               autofocus: true,
-              decoration: const InputDecoration(labelText: 'Lesson title *'),
+              decoration: const InputDecoration(
+                labelText: 'Lesson title *',
+                hintText: 'e.g. Introduction to React',
+              ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 14),
+
+            // Video Upload Section
+            Text(
+              'Lesson Video',
+              style: GoogleFonts.dmSans(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.ink,
+              ),
+            ),
+            const SizedBox(height: 6),
+            if (_uploading)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.brand.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.brand.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.brand,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _uploadStatusText ?? 'Uploading...',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          color: AppColors.brand,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              GestureDetector(
+                onTap: _pickAndUploadVideo,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: _videoCtrl.text.isNotEmpty
+                        ? const Color(0xFFF0FDF4)
+                        : AppColors.brand.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: _videoCtrl.text.isNotEmpty
+                          ? const Color(0xFF86EFAC)
+                          : AppColors.brand.withValues(alpha: 0.4),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _videoCtrl.text.isNotEmpty
+                            ? Icons.check_circle_outline_rounded
+                            : Icons.video_library_rounded,
+                        size: 18,
+                        color: _videoCtrl.text.isNotEmpty
+                            ? const Color(0xFF16A34A)
+                            : AppColors.brand,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _videoCtrl.text.isNotEmpty
+                            ? 'Video Attached (Tap to change)'
+                            : 'Pick & Upload Video File',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: _videoCtrl.text.isNotEmpty
+                              ? const Color(0xFF16A34A)
+                              : AppColors.brand,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            const SizedBox(height: 12),
             TextField(
               controller: _videoCtrl,
-              decoration: const InputDecoration(labelText: 'Video URL'),
+              decoration: const InputDecoration(
+                labelText: 'Video URL (auto-filled on upload)',
+                hintText: 'https://...',
+              ),
             ),
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
               initialValue: _source,
               decoration: const InputDecoration(labelText: 'Source'),
               items: const [
-                DropdownMenuItem(value: '', child: Text('None')),
-                DropdownMenuItem(value: 'upload', child: Text('Upload')),
+                DropdownMenuItem(value: 'bunny', child: Text('Bunny.net Stream')),
+                DropdownMenuItem(value: 'upload', child: Text('Cloudinary')),
                 DropdownMenuItem(value: 'youtube', child: Text('YouTube')),
+                DropdownMenuItem(value: '', child: Text('None / Text-only')),
               ],
               onChanged: (v) => setState(() => _source = v ?? ''),
             ),
@@ -821,19 +979,25 @@ class _LessonDialogState extends State<_LessonDialog> {
       ),
       actions: [
         TextButton(
-            onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
         TextButton(
-          onPressed: () {
-            if (_titleCtrl.text.trim().isEmpty) return;
-            Navigator.of(context).pop({
-              'title': _titleCtrl.text.trim(),
-              'videoUrl': _videoCtrl.text.trim(),
-              'source': _source,
-              'duration': int.tryParse(_durationCtrl.text.trim()) ?? 0,
-              'isFree': _isFree,
-            });
-          },
-          child: const Text('Add'),
+          onPressed: _uploading
+              ? null
+              : () {
+                  if (_titleCtrl.text.trim().isEmpty) return;
+                  Navigator.of(context).pop({
+                    'title': _titleCtrl.text.trim(),
+                    'videoUrl': _videoCtrl.text.trim(),
+                    'source': _source,
+                    'bunnyVideoId': _bunnyVideoId,
+                    'hlsUrl': _hlsUrl,
+                    'duration': int.tryParse(_durationCtrl.text.trim()) ?? 0,
+                    'isFree': _isFree,
+                  });
+                },
+          child: const Text('Add Lesson'),
         ),
       ],
     );

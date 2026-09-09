@@ -1,4 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -8,6 +9,7 @@ import 'providers/course_provider.dart';
 import 'providers/enrollment_provider.dart';
 import 'providers/instructor_provider.dart';
 import 'providers/message_provider.dart';
+import 'package:media_kit/media_kit.dart';
 import 'screens/splash_screen.dart';
 import 'screens/main_screen.dart';
 import 'screens/auth/login_screen.dart';
@@ -15,6 +17,7 @@ import 'theme/app_colors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized(); // Required for HLS adaptive streaming
   await Firebase.initializeApp();
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   runApp(const ZindaLearnApp());

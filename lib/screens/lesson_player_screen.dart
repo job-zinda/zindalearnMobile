@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:video_player/video_player.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import '../models/course_model.dart';
+import '../services/upload_service.dart';
 import '../theme/app_colors.dart';
 
-/// Real per-lesson curriculum player. Streams `Lesson.videoUrl` with
-/// `video_player` (same package as [CoursePromoPlayerScreen]) and lets the
-/// learner move between lessons via the bottom panel or prev/next controls,
-/// respecting per-lesson free-preview / enrollment locks.
+/// Real per-lesson curriculum player. Uses media_kit for HLS adaptive
+/// streaming (Bunny.net) and direct MP4 playback (Cloudinary/YouTube).
+///
+/// For Bunny.net videos: fetches a secure, time-limited HLS URL from the
+/// backend before playing. The HLS stream auto-switches quality (240p-1080p)
+/// based on the student's internet speed.
+///
+/// For legacy Cloudinary videos: plays the direct MP4 URL (backward compat).
 class LessonPlayerScreen extends StatefulWidget {
   final CourseModel course;
   final bool enrolled;
@@ -43,14 +49,24 @@ class _FlatLesson {
 class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   late final List<_FlatLesson> _flat;
   late int _current;
-  VideoPlayerController? _controller;
+
+  // media_kit player + controller
+  late final Player _player;
+  late final VideoController _videoController;
+  final _uploadService = UploadService();
+
   bool _ready = false;
   bool _failed = false;
+  bool _fetchingUrl = false; // true while fetching secure playback URL
 
   @override
   void initState() {
     super.initState();
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
+
+    // Initialize media_kit player
+    _player = Player();
+    _videoController = VideoController(_player);
 
     _flat = [
       for (var m = 0; m < widget.course.modules.length; m++)
@@ -83,55 +99,92 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
 
   bool _isLocked(_FlatLesson f) => !widget.enrolled && !f.lesson.isFree;
 
-  void _loadCurrent() {
-    _controller?.dispose();
-    _controller = null;
-    _ready = false;
-    _failed = false;
+  /// Load the current lesson's video. For Bunny.net videos, fetches a secure
+  /// playback URL first. For others, plays the URL directly.
+  Future<void> _loadCurrent() async {
+    setState(() {
+      _ready = false;
+      _failed = false;
+      _fetchingUrl = false;
+    });
 
-    final url = _flat[_current].lesson.videoUrl;
-    if (url.isEmpty) {
-      setState(() => _failed = true);
+    final lesson = _flat[_current].lesson;
+
+    // Determine the playback URL
+    String playbackUrl = '';
+
+    if (lesson.isBunny) {
+      // Fetch secure, time-limited HLS URL from backend
+      setState(() => _fetchingUrl = true);
+      try {
+        final section = widget.course.modules[_flat[_current].moduleIndex];
+        final result = await _uploadService.getPlaybackUrl(
+          widget.course.id,
+          section.id,
+          lesson.id,
+        );
+        playbackUrl = result.playbackUrl;
+      } catch (e) {
+        debugPrint('Failed to get playback URL: $e');
+        if (mounted) setState(() => _failed = true);
+        return;
+      } finally {
+        if (mounted) setState(() => _fetchingUrl = false);
+      }
+    } else {
+      // Direct URL (Cloudinary, YouTube, etc.)
+      playbackUrl = lesson.videoUrl;
+    }
+
+    if (playbackUrl.isEmpty) {
+      if (mounted) setState(() => _failed = true);
       return;
     }
 
-    final controller = VideoPlayerController.networkUrl(Uri.parse(url));
-    _controller = controller;
-    controller
-        .initialize()
-        .then((_) {
-          if (!mounted || _controller != controller) return;
-          setState(() => _ready = true);
-          controller.play();
-        })
-        .catchError((_) {
-          if (mounted && _controller == controller) {
-            setState(() => _failed = true);
-          }
-        });
+    // Open the media in the player
+    try {
+      debugPrint('[LessonPlayer] Opening URL: $playbackUrl');
+      await _player.open(Media(playbackUrl));
+
+      // Listen for errors
+      _player.stream.error.listen((error) {
+        debugPrint('[LessonPlayer] Player error: $error');
+      });
+
+      // Show the video widget immediately — media_kit will buffer and
+      // display the first frame as soon as it's ready. No need to wait
+      // for width > 0 before showing the widget; it handles buffering
+      // states internally and will show frames once decoded.
+      if (mounted) {
+        setState(() => _ready = true);
+      }
+
+      debugPrint('[LessonPlayer] Player opened, widget displayed');
+    } catch (e) {
+      debugPrint('[LessonPlayer] Failed to open media: $e');
+      if (mounted) setState(() => _failed = true);
+    }
   }
 
   @override
   void dispose() {
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
-    _controller?.dispose();
+    _player.dispose();
     super.dispose();
   }
 
   void _togglePlay() {
-    final c = _controller;
-    if (c == null || !_ready) return;
-    c.value.isPlaying ? c.pause() : c.play();
+    _player.playOrPause();
   }
 
-  void _seek(Duration delta) {
-    final c = _controller;
-    if (c == null || !_ready) return;
-    final target = c.value.position + delta;
+  void _seek(Duration delta) async {
+    final pos = await _player.stream.position.first;
+    final dur = await _player.stream.duration.first;
+    final target = pos + delta;
     final clamped = target < Duration.zero
         ? Duration.zero
-        : (target > c.value.duration ? c.value.duration : target);
-    c.seekTo(clamped);
+        : (target > dur ? dur : target);
+    _player.seek(clamped);
   }
 
   bool get _hasPrev => _current > 0;
@@ -230,13 +283,36 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
               ),
             ),
           ),
+          // HLS quality indicator badge
+          if (_ready && _flat[_current].lesson.isBunny)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.brand.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.hd_rounded, size: 14, color: AppColors.brand),
+                  const SizedBox(width: 3),
+                  Text(
+                    'HLS',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.brand,
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
   }
 
   Widget _videoArea(_FlatLesson current) {
-    final c = _controller;
     return GestureDetector(
       onDoubleTapDown: (details) {
         final half = MediaQuery.of(context).size.width / 2;
@@ -251,84 +327,150 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
             ? Center(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Text(
-                    current.lesson.videoUrl.isEmpty
-                        ? 'No video for this lesson yet.'
-                        : "Couldn't load the video.",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.75),
-                    ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        current.lesson.videoUrl.isEmpty &&
+                                !current.lesson.isBunny
+                            ? 'No video for this lesson yet.'
+                            : "Couldn't load the video.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.75),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      GestureDetector(
+                        onTap: _loadCurrent,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.brand.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'Retry',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.brand,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               )
-            : (_ready && c != null)
-            ? ValueListenableBuilder<VideoPlayerValue>(
-                valueListenable: c,
-                builder: (_, value, _) => Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Center(
-                      child: AspectRatio(
-                        aspectRatio: value.aspectRatio,
-                        child: VideoPlayer(c),
-                      ),
+            : (_ready)
+                ? Video(
+                    controller: _videoController,
+                    controls: NoVideoControls,
+                  )
+                : Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const CircularProgressIndicator(color: AppColors.brand),
+                        if (_fetchingUrl) ...[
+                          const SizedBox(height: 10),
+                          Text(
+                            'Preparing secure stream...',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 11,
+                              color: Colors.white54,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                    if (!value.isPlaying)
-                      const Icon(
-                        Icons.play_circle_fill_rounded,
-                        size: 52,
-                        color: Colors.white70,
-                      ),
-                    Positioned(
-                      bottom: 8,
-                      right: 10,
-                      child: Text(
-                        '${_fmt(value.position)} / ${_fmt(value.duration)}',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 11,
-                          color: Colors.white.withValues(alpha: 0.7),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      child: VideoProgressIndicator(
-                        c,
-                        allowScrubbing: true,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 8,
-                        ),
-                        colors: const VideoProgressColors(
-                          playedColor: AppColors.brand,
-                          bufferedColor: Colors.white30,
-                          backgroundColor: Colors.white12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            : const Center(
-                child: CircularProgressIndicator(color: AppColors.brand),
-              ),
+                  ),
       ),
     );
   }
 
   Widget _controls() {
-    final c = _controller;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-      child: (_ready && c != null)
-          ? ValueListenableBuilder<VideoPlayerValue>(
-              valueListenable: c,
-              builder: (_, value, _) => _controlsRow(value.isPlaying),
-            )
-          : _controlsRow(false),
+      child: StreamBuilder<Duration>(
+        stream: _player.stream.position,
+        builder: (_, posSnap) {
+          return StreamBuilder<Duration>(
+            stream: _player.stream.duration,
+            builder: (_, durSnap) {
+              final pos = posSnap.data ?? Duration.zero;
+              final dur = durSnap.data ?? Duration.zero;
+              return StreamBuilder<bool>(
+                stream: _player.stream.playing,
+                builder: (_, playSnap) {
+                  final playing = playSnap.data ?? false;
+                  return Column(
+                    children: [
+                      // Progress bar
+                      if (_ready && dur > Duration.zero)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            children: [
+                              Text(
+                                _fmt(pos),
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 11,
+                                  color: Colors.white.withValues(alpha: 0.7),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: SliderTheme(
+                                  data: SliderThemeData(
+                                    trackHeight: 3,
+                                    thumbShape: const RoundSliderThumbShape(
+                                      enabledThumbRadius: 6,
+                                    ),
+                                    overlayShape: const RoundSliderOverlayShape(
+                                      overlayRadius: 12,
+                                    ),
+                                    activeTrackColor: AppColors.brand,
+                                    inactiveTrackColor: Colors.white24,
+                                    thumbColor: AppColors.brand,
+                                  ),
+                                  child: Slider(
+                                    value: pos.inMilliseconds
+                                        .toDouble()
+                                        .clamp(0, dur.inMilliseconds.toDouble()),
+                                    max: dur.inMilliseconds.toDouble(),
+                                    onChanged: (v) {
+                                      _player.seek(
+                                        Duration(milliseconds: v.round()),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _fmt(dur),
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 11,
+                                  color: Colors.white.withValues(alpha: 0.7),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      _controlsRow(playing),
+                    ],
+                  );
+                },
+              );
+            },
+          );
+        },
+      ),
     );
   }
 
@@ -546,6 +688,15 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
                   ],
                 ),
               ),
+              // Small HLS badge for Bunny lessons
+              if (f.lesson.isBunny)
+                Icon(
+                  Icons.stream_rounded,
+                  size: 14,
+                  color: isCurrent
+                      ? AppColors.brand.withValues(alpha: 0.6)
+                      : AppColors.faint.withValues(alpha: 0.5),
+                ),
             ],
           ),
         ),
