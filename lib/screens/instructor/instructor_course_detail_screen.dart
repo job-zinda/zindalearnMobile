@@ -157,6 +157,7 @@ class _InstructorCourseDetailScreenState
         widget.courseId,
         sectionId,
         title: result['title'] as String,
+        description: result['description'] as String? ?? '',
         videoUrl: result['videoUrl'] as String? ?? '',
         source: result['source'] as String? ?? '',
         bunnyVideoId: result['bunnyVideoId'] as String? ?? '',
@@ -668,6 +669,40 @@ class _SectionTile extends StatelessWidget {
                         style: GoogleFonts.dmSans(fontSize: 13, color: AppColors.ink),
                       ),
                     ),
+                    if (lesson.isYouTube)
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF0000).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'YouTube',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFFCC0000),
+                          ),
+                        ),
+                      )
+                    else if (lesson.isBunny)
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: AppColors.brand.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'Bunny',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.brand,
+                          ),
+                        ),
+                      ),
                     if (lesson.duration > 0)
                       Text(
                         Formatters.duration(lesson.duration),
@@ -765,19 +800,26 @@ class _LessonDialog extends StatefulWidget {
 }
 
 class _LessonDialogState extends State<_LessonDialog> {
+  int _activeTab = 0; // 0 = Upload (Bunny.net), 1 = YouTube
   final _titleCtrl = TextEditingController();
+  final _descriptionCtrl = TextEditingController();
+  final _youtubeUrlCtrl = TextEditingController();
   final _videoCtrl = TextEditingController();
   final _durationCtrl = TextEditingController();
+
   String _source = 'bunny';
   String _bunnyVideoId = '';
   String _hlsUrl = '';
   bool _isFree = false;
   bool _uploading = false;
   String? _uploadStatusText;
+  String? _validationError;
 
   @override
   void dispose() {
     _titleCtrl.dispose();
+    _descriptionCtrl.dispose();
+    _youtubeUrlCtrl.dispose();
     _videoCtrl.dispose();
     _durationCtrl.dispose();
     super.dispose();
@@ -831,175 +873,457 @@ class _LessonDialogState extends State<_LessonDialog> {
     }
   }
 
+  void _submit() {
+    setState(() => _validationError = null);
+    final title = _titleCtrl.text.trim();
+    if (title.isEmpty) {
+      setState(() => _validationError = 'Lesson title is required');
+      return;
+    }
+
+    String finalVideoUrl = '';
+    String finalSource = '';
+    String finalBunnyVideoId = '';
+    String finalHlsUrl = '';
+
+    if (_activeTab == 0) {
+      // Upload tab (Bunny.net Stream)
+      finalVideoUrl = _videoCtrl.text.trim();
+      finalSource = _source.isNotEmpty ? _source : 'bunny';
+      finalBunnyVideoId = _bunnyVideoId;
+      finalHlsUrl = _hlsUrl;
+    } else {
+      // YouTube tab
+      final ytUrl = _youtubeUrlCtrl.text.trim();
+      if (ytUrl.isEmpty) {
+        setState(() => _validationError = 'Please provide a YouTube / Vimeo URL');
+        return;
+      }
+      finalVideoUrl = ytUrl;
+      finalSource = 'youtube';
+      finalBunnyVideoId = '';
+      finalHlsUrl = '';
+    }
+
+    Navigator.of(context).pop({
+      'title': title,
+      'description': _descriptionCtrl.text.trim(),
+      'videoUrl': finalVideoUrl,
+      'source': finalSource,
+      'bunnyVideoId': finalBunnyVideoId,
+      'hlsUrl': finalHlsUrl,
+      'duration': int.tryParse(_durationCtrl.text.trim()) ?? 0,
+      'isFree': _isFree,
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Add Lesson'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: _titleCtrl,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Lesson title *',
-                hintText: 'e.g. Introduction to React',
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // Video Upload Section
-            Text(
-              'Lesson Video',
-              style: GoogleFonts.dmSans(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.ink,
-              ),
-            ),
-            const SizedBox(height: 6),
-            if (_uploading)
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.brand.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.brand.withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  children: [
-                    const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.brand,
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      backgroundColor: Colors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header: Title + Tab Pill Switcher (Matching Web)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Add New Lesson',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF0F172A),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        _uploadStatusText ?? 'Uploading...',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 12,
-                          color: AppColors.brand,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            else
-              GestureDetector(
-                onTap: _pickAndUploadVideo,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-                  decoration: BoxDecoration(
-                    color: _videoCtrl.text.isNotEmpty
-                        ? const Color(0xFFF0FDF4)
-                        : AppColors.brand.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: _videoCtrl.text.isNotEmpty
-                          ? const Color(0xFF86EFAC)
-                          : AppColors.brand.withValues(alpha: 0.4),
-                      width: 1.2,
                     ),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        _videoCtrl.text.isNotEmpty
-                            ? Icons.check_circle_outline_rounded
-                            : Icons.video_library_rounded,
-                        size: 18,
+                  // Segmented Pills [ Upload | YouTube ]
+                  Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _tabPill(
+                          index: 0,
+                          label: 'Upload',
+                          activeColor: AppColors.brand,
+                        ),
+                        _tabPill(
+                          index: 1,
+                          label: 'YouTube',
+                          activeColor: const Color(0xFFDC2626),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // Lesson Title
+              _fieldLabel('LESSON TITLE'),
+              const SizedBox(height: 6),
+              TextField(
+                controller: _titleCtrl,
+                autofocus: false,
+                style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.ink),
+                decoration: _inputDecoration('e.g. Introduction to React'),
+              ),
+              const SizedBox(height: 14),
+
+              // Description (Optional)
+              _fieldLabel('DESCRIPTION (OPTIONAL)'),
+              const SizedBox(height: 6),
+              TextField(
+                controller: _descriptionCtrl,
+                maxLines: 2,
+                style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.ink),
+                decoration: _inputDecoration('What will students learn in this lesson?'),
+              ),
+              const SizedBox(height: 16),
+
+              // Dynamic Media Section: Tab 0 (Upload) vs Tab 1 (YouTube)
+              if (_activeTab == 0) ...[
+                _fieldLabel('LECTURE VIDEO (BUNNY.NET STREAM)'),
+                const SizedBox(height: 6),
+                if (_uploading)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.brand.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: AppColors.brand.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: AppColors.brand,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Text(
+                            _uploadStatusText ?? 'Uploading to Bunny.net...',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 13,
+                              color: AppColors.brand,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  GestureDetector(
+                    onTap: _pickAndUploadVideo,
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                      decoration: BoxDecoration(
                         color: _videoCtrl.text.isNotEmpty
-                            ? const Color(0xFF16A34A)
-                            : AppColors.brand,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _videoCtrl.text.isNotEmpty
-                            ? 'Video Attached (Tap to change)'
-                            : 'Pick & Upload Video File',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
+                            ? const Color(0xFFF0FDF4)
+                            : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
                           color: _videoCtrl.text.isNotEmpty
-                              ? const Color(0xFF16A34A)
-                              : AppColors.brand,
+                              ? const Color(0xFF86EFAC)
+                              : const Color(0xFFCBD5E1),
+                          width: 1.5,
                         ),
                       ),
-                    ],
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: _videoCtrl.text.isNotEmpty
+                                  ? const Color(0xFFDCFCE7)
+                                  : AppColors.brand.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              _videoCtrl.text.isNotEmpty
+                                  ? Icons.check_circle_rounded
+                                  : Icons.cloud_upload_outlined,
+                              size: 26,
+                              color: _videoCtrl.text.isNotEmpty
+                                  ? const Color(0xFF16A34A)
+                                  : AppColors.brand,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            _videoCtrl.text.isNotEmpty
+                                ? 'Video Ready to Save'
+                                : 'Drag & drop lecture video or click to browse',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.dmSans(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w600,
+                              color: _videoCtrl.text.isNotEmpty
+                                  ? const Color(0xFF16A34A)
+                                  : const Color(0xFF1E293B),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _videoCtrl.text.isNotEmpty
+                                ? 'Tap to pick another video file'
+                                : 'MP4, WebM, or MOV (Bunny.net)',
+                            style: GoogleFonts.dmSans(
+                              fontSize: 11.5,
+                              color: const Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ] else ...[
+                _fieldLabel('VIDEO URL (YOUTUBE/VIMEO)'),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _youtubeUrlCtrl,
+                  style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.ink),
+                  decoration: _inputDecoration('https://www.youtube.com/watch?v=...').copyWith(
+                    prefixIcon: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12),
+                      child: Icon(
+                        Icons.smart_display_rounded,
+                        color: Color(0xFFDC2626),
+                        size: 22,
+                      ),
+                    ),
+                    prefixIconConstraints: const BoxConstraints(minWidth: 40),
                   ),
                 ),
+                const SizedBox(height: 6),
+                Text(
+                  'Students clicking this lesson will be seamlessly directed to YouTube to watch.',
+                  style: GoogleFonts.dmSans(fontSize: 11.5, color: AppColors.muted),
+                ),
+              ],
+              const SizedBox(height: 14),
+
+              // Duration & Free preview row
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 4,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _fieldLabel('DURATION (MINS)'),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: _durationCtrl,
+                          keyboardType: TextInputType.number,
+                          style: GoogleFonts.dmSans(fontSize: 14, color: AppColors.ink),
+                          decoration: _inputDecoration('e.g. 15'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    flex: 5,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 20),
+                      child: InkWell(
+                        onTap: () => setState(() => _isFree = !_isFree),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: Checkbox(
+                                  value: _isFree,
+                                  onChanged: (v) => setState(() => _isFree = v ?? false),
+                                  activeColor: AppColors.brand,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Free preview',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.ink,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
 
-            const SizedBox(height: 12),
-            TextField(
-              controller: _videoCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Video URL (auto-filled on upload)',
-                hintText: 'https://...',
-              ),
-            ),
-            const SizedBox(height: 10),
-            DropdownButtonFormField<String>(
-              initialValue: _source,
-              decoration: const InputDecoration(labelText: 'Source'),
-              items: const [
-                DropdownMenuItem(value: 'bunny', child: Text('Bunny.net Stream')),
-                DropdownMenuItem(value: 'upload', child: Text('Cloudinary')),
-                DropdownMenuItem(value: 'youtube', child: Text('YouTube')),
-                DropdownMenuItem(value: '', child: Text('None / Text-only')),
+              if (_validationError != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _validationError!,
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.red,
+                  ),
+                ),
               ],
-              onChanged: (v) => setState(() => _source = v ?? ''),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _durationCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Duration (minutes)'),
-            ),
-            const SizedBox(height: 4),
-            CheckboxListTile(
-              value: _isFree,
-              onChanged: (v) => setState(() => _isFree = v ?? false),
-              title: const Text('Available as free preview'),
-              contentPadding: EdgeInsets.zero,
-              controlAffinity: ListTileControlAffinity.leading,
-            ),
-          ],
+
+              const SizedBox(height: 22),
+
+              // Actions: Cancel & Save Lesson
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFF64748B),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                    child: Text(
+                      'Cancel',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  ElevatedButton.icon(
+                    onPressed: _uploading ? null : _submit,
+                    icon: const Icon(Icons.check_rounded, size: 18),
+                    label: Text(
+                      'Save Lesson',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0F172A),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+    );
+  }
+
+  Widget _tabPill({
+    required int index,
+    required String label,
+    required Color activeColor,
+  }) {
+    final isSelected = _activeTab == index;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _activeTab = index;
+          _validationError = null;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(9),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
         ),
-        TextButton(
-          onPressed: _uploading
-              ? null
-              : () {
-                  if (_titleCtrl.text.trim().isEmpty) return;
-                  Navigator.of(context).pop({
-                    'title': _titleCtrl.text.trim(),
-                    'videoUrl': _videoCtrl.text.trim(),
-                    'source': _source,
-                    'bunnyVideoId': _bunnyVideoId,
-                    'hlsUrl': _hlsUrl,
-                    'duration': int.tryParse(_durationCtrl.text.trim()) ?? 0,
-                    'isFree': _isFree,
-                  });
-                },
-          child: const Text('Add Lesson'),
+        child: Text(
+          label,
+          style: GoogleFonts.dmSans(
+            fontSize: 12.5,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: isSelected ? activeColor : const Color(0xFF64748B),
+          ),
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _fieldLabel(String text) {
+    return Text(
+      text,
+      style: GoogleFonts.dmSans(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        color: const Color(0xFF64748B),
+        letterSpacing: 0.4,
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: GoogleFonts.dmSans(fontSize: 13.5, color: const Color(0xFF94A3B8)),
+      filled: true,
+      fillColor: const Color(0xFFF8FAFC),
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.brand, width: 1.5),
+      ),
     );
   }
 }

@@ -56,6 +56,43 @@ class Lesson {
   /// Whether this lesson uses Bunny.net HLS streaming.
   bool get isBunny => source == 'bunny' && bunnyVideoId.isNotEmpty;
 
+  /// Whether this lesson is hosted on YouTube or Vimeo.
+  bool get isYouTube =>
+      source == 'youtube' ||
+      videoUrl.contains('youtube.com') ||
+      videoUrl.contains('youtu.be') ||
+      videoUrl.contains('vimeo.com');
+
+  /// Extract YouTube Video ID from standard YouTube URLs.
+  String? get youTubeId {
+    if (videoUrl.isEmpty) return null;
+    final uri = Uri.tryParse(videoUrl);
+    if (uri == null) return null;
+
+    if (uri.host.contains('youtu.be')) {
+      return uri.pathSegments.isNotEmpty ? uri.pathSegments.first : null;
+    }
+    if (uri.host.contains('youtube.com')) {
+      if (uri.queryParameters.containsKey('v')) {
+        return uri.queryParameters['v'];
+      }
+      if (uri.pathSegments.contains('embed') || uri.pathSegments.contains('shorts')) {
+        final idx = uri.pathSegments.indexWhere((s) => s == 'embed' || s == 'shorts');
+        if (idx != -1 && idx + 1 < uri.pathSegments.length) {
+          return uri.pathSegments[idx + 1];
+        }
+      }
+    }
+    return null;
+  }
+
+  /// Thumbnail URL for YouTube lessons.
+  String? get youTubeThumbnailUrl {
+    final id = youTubeId;
+    if (id == null || id.isEmpty) return null;
+    return 'https://img.youtube.com/vi/$id/hqdefault.jpg';
+  }
+
   factory Lesson.fromJson(Map<String, dynamic> json) {
     return Lesson(
       id: json['_id']?.toString() ?? json['id']?.toString() ?? '',

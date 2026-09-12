@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/course_model.dart';
 import '../services/upload_service.dart';
 import '../theme/app_colors.dart';
@@ -110,6 +111,22 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
 
     final lesson = _flat[_current].lesson;
 
+    if (lesson.isYouTube) {
+      // Don't route YouTube through media_kit (which cannot stream web YouTube watch URLs directly).
+      // Stop native player if playing, and mark ready so the YouTube card is displayed.
+      try {
+        await _player.stop();
+      } catch (_) {}
+      if (mounted) {
+        setState(() {
+          _ready = true;
+          _failed = false;
+          _fetchingUrl = false;
+        });
+      }
+      return;
+    }
+
     // Determine the playback URL
     String playbackUrl = '';
 
@@ -201,6 +218,27 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
     _loadCurrent();
   }
 
+  Future<void> _launchYouTube(String url) async {
+    if (url.trim().isEmpty) return;
+    try {
+      final uri = Uri.parse(url.trim());
+      final launched =
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched) {
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not open YouTube link: $e'),
+          backgroundColor: AppColors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   void _showLockedSnack() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -283,8 +321,32 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
               ),
             ),
           ),
-          // HLS quality indicator badge
-          if (_ready && _flat[_current].lesson.isBunny)
+          // YouTube or HLS quality indicator badge
+          if (_flat[_current].lesson.isYouTube)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF0000).withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.smart_display_rounded,
+                      size: 14, color: Color(0xFFFF0000)),
+                  const SizedBox(width: 4),
+                  Text(
+                    'YouTube',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFFFF4D4D),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else if (_ready && _flat[_current].lesson.isBunny)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
@@ -313,6 +375,10 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
   }
 
   Widget _videoArea(_FlatLesson current) {
+    if (current.lesson.isYouTube) {
+      return _youTubeVideoArea(current);
+    }
+
     return GestureDetector(
       onDoubleTapDown: (details) {
         final half = MediaQuery.of(context).size.width / 2;
@@ -393,7 +459,144 @@ class _LessonPlayerScreenState extends State<LessonPlayerScreen> {
     );
   }
 
+  Widget _youTubeVideoArea(_FlatLesson current) {
+    final thumb = current.lesson.youTubeThumbnailUrl;
+    return Container(
+      width: double.infinity,
+      height: 220,
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A),
+        image: thumb != null
+            ? DecorationImage(
+                image: NetworkImage(thumb),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  Colors.black.withValues(alpha: 0.55),
+                  BlendMode.darken,
+                ),
+              )
+            : null,
+      ),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GestureDetector(
+                onTap: () => _launchYouTube(current.lesson.videoUrl),
+                child: Container(
+                  width: 60,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF0000),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFFF0000).withValues(alpha: 0.4),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.play_arrow_rounded,
+                      color: Colors.white,
+                      size: 34,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'This lesson is hosted on YouTube',
+                style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 10),
+              ElevatedButton.icon(
+                onPressed: () => _launchYouTube(current.lesson.videoUrl),
+                icon: const Icon(Icons.open_in_new_rounded, size: 14),
+                label: Text(
+                  'Watch on YouTube',
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF0F172A),
+                  elevation: 0,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _controls() {
+    final currentLesson = _flat[_current].lesson;
+    if (currentLesson.isYouTube) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            TextButton.icon(
+              onPressed: _hasPrev ? () => _goTo(_current - 1) : null,
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 13),
+              label: const Text('Previous'),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white70,
+                disabledForegroundColor: Colors.white24,
+              ),
+            ),
+            OutlinedButton.icon(
+              onPressed: () => _launchYouTube(currentLesson.videoUrl),
+              icon: const Icon(Icons.smart_display_rounded,
+                  color: Color(0xFFFF0000), size: 16),
+              label: Text(
+                'Open YouTube',
+                style: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: Colors.white.withValues(alpha: 0.25)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              ),
+            ),
+            TextButton.icon(
+              onPressed: _hasNext ? () => _goTo(_current + 1) : null,
+              icon: const Text('Next'),
+              label: const Icon(Icons.arrow_forward_ios_rounded, size: 13),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white70,
+                disabledForegroundColor: Colors.white24,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
       child: StreamBuilder<Duration>(
