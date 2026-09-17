@@ -179,16 +179,10 @@ class _CreateEditCourseScreenState extends State<CreateEditCourseScreen> {
     if (source == null) return;
 
     final picked = await ImagePicker()
-        .pickVideo(source: source, maxDuration: const Duration(minutes: 10));
+        .pickVideo(source: source);
     if (picked == null || !mounted) return;
 
     final file = File(picked.path);
-    const maxBytes = 100 * 1024 * 1024;
-    if (await file.length() > maxBytes) {
-      if (!mounted) return;
-      _showSnack('Video must be 100MB or smaller.', error: true);
-      return;
-    }
 
     setState(() => _uploadingVideo = true);
     try {

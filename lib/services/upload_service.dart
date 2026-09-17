@@ -79,7 +79,14 @@ class UploadService {
       ),
     });
 
-    final response = await _client.post(ApiConstants.uploadVideo, data: formData);
+    final response = await _client.post(
+      ApiConstants.uploadVideo,
+      data: formData,
+      options: Options(
+        sendTimeout: Duration.zero, // no limit — large file upload
+        receiveTimeout: Duration.zero, // no limit — server uploads to Bunny
+      ),
+    );
     final json = response.data as Map<String, dynamic>;
     final url = json['url'] as String?;
     if (url == null) {
